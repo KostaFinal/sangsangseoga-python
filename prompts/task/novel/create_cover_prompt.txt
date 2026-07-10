@@ -1,0 +1,215 @@
+소설 표지 프롬프트 생성 작업을 수행한다.
+
+목표:
+
+- 제공된 소설 setting과 scene plan을 바탕으로 소설 표지 이미지 프롬프트를 만든다.
+- 이 작업에서는 실제 이미지를 생성하지 않는다.
+- 이 작업에서는 소설 본문을 작성하지 않는다.
+- 이 작업에서는 장면 계획을 새로 만들지 않는다.
+- 이 작업에서는 표지 이미지 생성에 사용할 coverPrompt만 생성한다.
+
+적용 대상:
+
+- bookType이 "NOVEL"인 경우에만 사용한다.
+- 현재 taskType은 "CREATE_COVER_PROMPT"이다.
+- 소설은 페이지별 삽화가 아니라 표지 이미지를 중심으로 생성한다.
+
+입력 기준:
+
+- draft.setting은 소설의 기본 설정이다.
+- draft.outline.scenes는 소설 장면 계획이다.
+- draft.images.style은 사용자가 선택한 표지 스타일이다.
+- draft.pages 또는 draft.scenes가 제공된 경우, 본문 분위기를 참고할 수 있다.
+- 단, 표지 프롬프트는 draft.setting과 draft.outline.scenes를 우선 기준으로 만든다.
+
+필수 입력 확인:
+
+- draft.setting이 있어야 한다.
+- draft.setting.storySeed가 있어야 한다.
+- draft.setting.genre가 있어야 한다.
+- draft.setting.protagonist가 있어야 한다.
+- draft.setting.background가 있어야 한다.
+- draft.setting.conflict가 있어야 한다.
+- draft.setting.endingDirection이 있어야 한다.
+- 필수 입력이 부족하면 표지 프롬프트를 생성하지 않는다.
+- 필수 입력이 부족한 경우 status는 "NEED_MORE_INPUT"으로 반환한다.
+- 부족한 필드는 missingFields에 넣는다.
+- nextAction은 "ASK_USER"로 반환한다.
+
+이미지 스타일 처리 규칙:
+
+- draft.images.style이 있으면 그 값을 사용한다.
+- draft.images.style이 비어 있으면 "ILLUSTRATION"을 기본값으로 사용하고 warnings에 "표지 스타일이 없어 ILLUSTRATION을 기본값으로 사용했습니다."를 넣는다.
+- style 값은 다음 중 하나를 사용할 수 있다:
+    - "ILLUSTRATION"
+    - "CINEMATIC"
+    - "WATERCOLOR"
+    - "MINIMAL"
+    - "DARK_FANTASY"
+    - "BRIGHT_FANTASY"
+    - "ROMANCE"
+    - "MYSTERY"
+
+스타일별 표현 규칙:
+
+- "ILLUSTRATION"은 소설 표지용 일러스트 느낌으로 작성한다.
+- "CINEMATIC"은 영화 포스터처럼 장면감과 빛의 대비가 느껴지게 작성한다.
+- "WATERCOLOR"는 감성적인 수채화 표지 느낌으로 작성한다.
+- "MINIMAL"은 상징적이고 간결한 문학 표지 느낌으로 작성한다.
+- "DARK_FANTASY"는 어둡고 신비로운 판타지 표지 느낌으로 작성하되 과도한 공포는 피한다.
+- "BRIGHT_FANTASY"는 밝고 몽환적인 판타지 표지 느낌으로 작성한다.
+- "ROMANCE"는 인물의 감정과 분위기를 중심으로 한 따뜻한 표지 느낌으로 작성한다.
+- "MYSTERY"는 비밀, 단서, 긴장감을 암시하는 표지 느낌으로 작성하되 잔혹하거나 공포스럽게 만들지 않는다.
+- 스타일은 coverPrompt 전체에 일관되게 반영한다.
+
+표지 구성 규칙:
+
+- coverPrompt는 소설 전체의 핵심 분위기와 중심 갈등이 드러나야 한다.
+- coverPrompt에는 protagonist, background, conflict, genre, mood를 자연스럽게 반영한다.
+- symbolItem이 제공된 경우 표지의 핵심 상징물로 활용한다.
+- title이 제공된 경우 표지의 분위기에는 반영할 수 있지만, 이미지 안에 글자를 넣으라고 지시하지 않는다.
+- 표지는 이야기의 한 장면을 그대로 복사하기보다, 전체 소설을 대표하는 상징적인 장면으로 만든다.
+- 주인공의 선택, 갈등, 고립감, 희망, 비밀, 변화 중 하나 이상이 이미지에서 느껴져야 한다.
+- 표지에는 인물, 배경, 상징물, 빛, 색감, 분위기가 구체적으로 드러나야 한다.
+- 표지에는 텍스트, 제목 글자, 자막, 말풍선, 로고를 넣지 않는다.
+
+장면 계획 활용 규칙:
+
+- draft.outline.scenes가 있으면 초반 장면, 중심 갈등 장면, 절정 장면, 결말 정서를 참고한다.
+- 표지 이미지는 특정 한 장면만 설명하지 않아도 된다.
+- 여러 장면의 핵심 이미지를 하나의 상징적인 표지 장면으로 압축할 수 있다.
+- 단, scene plan에 없는 완전히 새로운 핵심 사건을 표지에 넣지 않는다.
+- 반전이나 결말의 핵심 비밀을 직접적으로 드러내지 않는다.
+- 표지는 독자의 궁금증을 만들되, 결말을 스포일러하지 않아야 한다.
+
+캐릭터 일관성 규칙:
+
+- 주인공의 핵심 특징은 유지한다.
+- protagonist에 외형 정보가 있으면 반영한다.
+- protagonist에 외형 정보가 없으면 과하게 구체적인 외형을 새로 만들지 않는다.
+- 단, 이미지 생성을 위해 최소한의 분위기적 특징은 제안할 수 있다.
+- 예: "기억을 잃은 견습 기록관"은 "a young apprentice archivist with a thoughtful and uncertain expression"처럼 표현할 수 있다.
+- 주인공의 감정은 conflict와 endingDirection에 맞게 표현한다.
+
+분위기 규칙:
+
+- mood가 제공된 경우 색감, 빛, 배경 분위기에 반영한다.
+- endingDirection이 밝은 결말이면 희망적인 빛이나 회복의 분위기를 일부 반영한다.
+- endingDirection이 새드엔딩이면 차분하고 여운 있는 분위기로 표현한다.
+- endingDirection이 열린 결말이면 불확실성과 가능성이 함께 느껴지게 표현한다.
+- endingDirection이 반전 결말이면 직접적인 스포일러 없이 불안한 단서나 상징으로 표현한다.
+- 과도한 공포, 잔혹한 표현, 폭력적 장면은 피한다.
+
+이미지 비율 규칙:
+
+- 모든 표지 프롬프트는 세로형 책 표지에 적합해야 한다.
+- 기본 비율은 2:3 세로형 책 표지로 가정한다.
+- 필요한 경우 prompt 안에 "vertical 2:3 novel book cover illustration" 의미가 반영되도록 작성한다.
+- 이미지 안에 글자, 자막, 말풍선, 워터마크, 로고는 없어야 한다.
+- 제목과 작가명은 이미지 생성 이후 UI나 편집 단계에서 별도로 넣는다고 가정한다.
+
+언어 규칙:
+
+- coverPrompt는 이미지 생성 모델이 이해하기 쉽게 영어로 작성한다.
+- message, warnings 같은 사용자 표시 문장은 한국어로 작성한다.
+- title은 한국어로 유지할 수 있다.
+- coverPrompt 안에서는 제목 텍스트를 이미지에 넣으라고 지시하지 않는다.
+
+금지 표현 규칙:
+
+- 다음 요소를 coverPrompt에 포함하지 않는다:
+    - readable text
+    - Korean text inside image
+    - English text inside image
+    - captions
+    - speech bubbles
+    - typography
+    - title text
+    - author name
+    - watermark
+    - logo
+    - UI elements
+    - comic panels
+    - blood
+    - gore
+    - realistic horror
+    - excessive violence
+- "no text, no captions, no speech bubbles, no typography, no watermark, no logo"는
+  프롬프트 맨 끝이 아니라 맨 앞부분(장면 묘사보다 먼저)에 넣는다. 이미지 생성 모델은
+  negative prompt를 지원하지 않아, 금지 조건이 긴 장면 묘사 뒤에 있으면 무시되거나
+  잘려나가기 쉽다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- status가 "SUCCESS"인 경우 result에는 반드시 style, title, coverPrompt를 넣는다.
+- result.style은 최종 적용된 스타일 값이다.
+- result.title은 draft.setting.title이 있으면 유지한다.
+- draft.setting.title이 비어 있으면 소설과 어울리는 제목을 생성한다.
+- result.coverPrompt는 최종 표지 이미지 생성용 프롬프트이다.
+- 실제 이미지를 생성하지 않는다.
+- pagePrompts는 생성하지 않는다.
+- 본문 bodyText는 생성하지 않는다.
+- JSON key는 camelCase를 사용한다.
+- 사용자에게 보이는 message는 한국어로 작성한다.
+
+result 구조:
+{
+"style": "ILLUSTRATION",
+"title": "",
+"coverPrompt": ""
+}
+
+성공 응답 예시:
+{
+"status": "SUCCESS",
+"taskType": "CREATE_COVER_PROMPT",
+"message": "소설 표지 프롬프트가 완성되었어요.",
+"result": {
+"style": "ILLUSTRATION",
+"title": "",
+"coverPrompt": ""
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "COMPLETE"
+}
+
+요청 json 예시
+
+{
+"taskType": "CREATE_COVER_PROMPT",
+"draft": {
+"bookType": "NOVEL",
+"meta": {
+"interactionMode": "MIXED",
+"writerLevel": "TEEN",
+"readerAge": "TEEN"
+},
+"setting": {
+"storySeed": "낡은 도서관에서 발견한 이름 없는 편지",
+"genre": "판타지 미스터리",
+"protagonist": "기억을 잃은 견습 기록관",
+"background": "황혼이 내려앉은 오래된 도서관",
+"conflict": "편지를 읽을수록 현실의 기억이 바뀐다",
+"endingDirection": "여운 있는 열린 결말",
+"mood": "몽환적이고 신비로운 분위기",
+"pointOfView": "3인칭 제한 시점",
+"volume": "보통",
+"symbolItem": "이름 없는 편지",
+"title": ""
+},
+"outline": {
+"title": "",
+"sceneCount": 8,
+"scenes": []
+},
+"pages": [],
+"images": {
+"style": "MYSTERY",
+"coverPrompt": "",
+"pagePrompts": []
+}
+},
+"extra": {}
+}

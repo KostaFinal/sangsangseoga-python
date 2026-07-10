@@ -1,0 +1,229 @@
+소설 현재 장면 본문 작성 작업을 수행한다.
+
+목표:
+
+- 제공된 소설 설정과 장면 계획을 바탕으로 현재 장면의 본문을 작성한다.
+- 전체 소설을 한 번에 작성하지 않는다.
+- 현재 sceneNo에 해당하는 한 장면의 본문만 작성한다.
+- 다른 장면의 본문을 미리 작성하지 않는다.
+- 장면 계획을 새로 만들지 않는다.
+- 표지나 이미지 프롬프트를 생성하지 않는다.
+- 현재 장면의 bodyText, bodyTextEn, summary, nextHook을 생성한다.
+
+적용 대상:
+
+- bookType이 "NOVEL"인 경우에만 사용한다.
+- 현재 taskType은 "WRITE_SCENE"이다.
+- 소설은 장면 단위로 작성한다.
+- 현재 작성할 장면 번호는 extra.currentSceneNo를 기준으로 한다.
+
+입력 기준:
+
+- draft.setting은 소설의 기본 설정이다.
+- draft.outline.scenes는 장면별 계획이다.
+- draft.scenes는 이미 작성된 장면 본문 목록이다.
+- draft.scenes가 없고 draft.pages만 제공된 경우, draft.pages를 기존 장면 본문 목록으로 해석할 수 있다.
+- extra.currentSceneNo는 지금 작성해야 하는 장면 번호이다.
+- extra.userInput이 제공된 경우, 사용자의 짧은 입력이나 요청을 현재 장면 본문에 반영한다.
+
+필수 입력 확인:
+
+- draft.setting이 있어야 한다.
+- draft.outline.scenes가 있어야 한다.
+- extra.currentSceneNo가 있어야 한다.
+- draft.outline.scenes 안에 extra.currentSceneNo와 같은 sceneNo를 가진 scene plan이 있어야 한다.
+- 필수 입력이 부족하면 본문을 생성하지 않는다.
+- 필수 입력이 부족한 경우 status는 "NEED_MORE_INPUT"으로 반환한다.
+- 부족한 필드는 missingFields에 넣는다.
+- nextAction은 "ASK_USER"로 반환한다.
+
+현재 장면 선택 규칙:
+
+- extra.currentSceneNo와 같은 sceneNo를 가진 scene plan을 찾는다.
+- 해당 scene plan의 phase, sceneTitle, sceneSummary, sceneGoal, conflictPoint, characterChoice, emotionalChange, nextHook을 기준으로 본문을 작성한다.
+- 현재 sceneNo에 해당하지 않는 장면을 쓰지 않는다.
+- 다음 장면의 핵심 사건을 현재 장면에서 미리 해결하지 않는다.
+- 이전 장면과 자연스럽게 연결하되, 현재 장면의 목표와 갈등을 유지한다.
+
+본문 작성 규칙:
+
+- 현재 장면 본문만 작성한다.
+- 한 장면에는 하나의 중심 목표, 갈등, 선택, 감정 변화를 담는다.
+- sceneSummary에 없는 큰 사건을 임의로 추가하지 않는다.
+- sceneGoal이 장면 안에서 분명히 드러나야 한다.
+- conflictPoint가 장면 안에서 갈등이나 압박으로 드러나야 한다.
+- characterChoice가 주인공의 행동, 판단, 회피, 선택 중 하나로 드러나야 한다.
+- emotionalChange가 장면 전후의 감정 변화로 느껴져야 한다.
+- nextHook은 다음 장면으로 이어질 단서, 질문, 감정, 사건으로 남긴다.
+- 독자 나이 규칙에 맞는 문장 난이도와 어휘를 사용한다.
+- 소설 장르 규칙에 맞는 분위기, 갈등, 인물 묘사를 유지한다.
+- 안전 규칙을 따른다.
+- 과도한 폭력, 잔혹한 묘사, 선정적 묘사, 현실적인 공포 묘사는 만들지 않는다.
+
+소설 장면 구성 규칙:
+
+- 장면은 설명만으로 진행하지 않는다.
+- 행동, 대화, 내면, 분위기를 균형 있게 사용한다.
+- 대화는 인물의 성격, 관계, 감정 변화가 드러날 때 사용한다.
+- 내면 묘사는 인물의 선택이나 행동과 연결되어야 한다.
+- 배경 묘사는 장면의 분위기와 갈등을 강화하는 역할을 해야 한다.
+- 장면의 끝에는 다음 장면으로 이어지는 단서나 감정의 여운을 남길 수 있다.
+- 단, 다음 장면의 핵심 사건을 현재 장면에서 모두 설명하지 않는다.
+
+문장과 분량 규칙:
+
+- 문장 난이도는 reader_age 규칙을 따른다.
+- volume이 "짧게" 또는 "SHORT"이면 장면을 간결하게 작성한다.
+- volume이 "보통" 또는 "MEDIUM"이면 장면의 사건과 감정을 균형 있게 작성한다.
+- volume이 "길게" 또는 "LONG"이면 장면 묘사와 내면 묘사를 조금 더 풍부하게 작성할 수 있다.
+- volume이 비어 있으면 보통 분량으로 작성한다.
+- 한 장면에 너무 많은 사건을 넣지 않는다.
+- 장면의 중심 목표와 감정 흐름을 유지한다.
+
+연속성 규칙:
+
+- 이미 작성된 이전 장면이 있으면 자연스럽게 이어지도록 한다.
+- 주인공, 배경, 중심 갈등, 분위기, 시점, 상징물을 일관되게 유지한다.
+- 이전 장면에서 해결되지 않은 갈등을 갑자기 없애지 않는다.
+- 이전 장면의 결과가 현재 장면의 출발점이 되도록 한다.
+- 현재 장면이 마지막 장면이 아니라면 중심 갈등을 완전히 해결하지 않는다.
+- 현재 장면이 마지막 장면이라면 endingDirection에 맞게 이야기를 마무리한다.
+- 반전이나 비밀이 있는 경우, 너무 일찍 직접적으로 드러내지 않는다.
+
+시점 규칙:
+
+- draft.setting.pointOfView가 있으면 해당 시점을 따른다.
+- pointOfView가 "1인칭"이면 주인공의 시선과 생각을 중심으로 작성한다.
+- pointOfView가 "3인칭 제한 시점"이면 주인공이 알 수 있는 정보만 중심으로 작성한다.
+- pointOfView가 "3인칭 전지적 시점"이면 여러 인물의 상황을 다룰 수 있지만, 장면의 초점이 흐려지지 않게 한다.
+- pointOfView가 비어 있으면 3인칭 제한 시점으로 작성한다.
+
+사용자 입력 반영 규칙:
+
+- extra.userInput이 있으면 현재 장면 본문에 반영한다.
+- 사용자의 입력은 현재 장면의 대사, 행동, 감정, 분위기, 사건 단서 중 하나로 활용할 수 있다.
+- 사용자의 고유명사, 장소, 물건, 핵심 사건은 최대한 유지한다.
+- 사용자의 문장이 어색하면 독자 나이에 맞게 자연스럽게 다듬는다.
+- 사용자의 입력을 완전히 다른 방향으로 바꾸지 않는다.
+- 사용자 입력이 현재 장면 계획과 크게 충돌하면 scene plan을 우선하되, 가능한 범위에서 사용자의 의도를 반영한다.
+- 사용자 입력이 안전 규칙이나 장르 규칙에 맞지 않으면 부드럽게 조정한다.
+- 조정이 필요한 경우 warnings에 짧게 이유를 남긴다.
+
+summary 작성 규칙:
+
+- summary는 현재 장면의 내용을 1문장으로 요약한다.
+- summary는 다음 장면 작성 시 연속성 참고용으로 사용할 수 있어야 한다.
+- summary에는 현재 장면에서 실제로 일어난 핵심 사건만 넣는다.
+- 다음 장면의 사건을 summary에 미리 넣지 않는다.
+
+bodyTextEn 작성 규칙:
+
+- bodyTextEn은 bodyText와 같은 내용을 자연스러운 영어로 옮긴 번역이다.
+- bodyText에 없는 사건이나 설명을 추가하지 않는다.
+- 독자 나이에 어울리는 자연스러운 영어 문장으로 작성한다.
+
+nextHook 작성 규칙:
+
+- nextHook은 다음 장면으로 이어지는 단서, 질문, 감정, 사건이다.
+- nextHook은 현재 장면의 끝과 자연스럽게 연결되어야 한다.
+- nextHook은 독자의 궁금증을 만들 수 있다.
+- nextHook은 결말이나 반전을 직접적으로 스포일러하지 않는다.
+- 현재 장면이 마지막 장면이라면 nextHook은 빈 문자열 ""로 둔다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- status가 "SUCCESS"인 경우 result에는 반드시 sceneNo, phase, sceneTitle, bodyText, bodyTextEn, summary, nextHook을 넣는다.
+- sceneNo는 extra.currentSceneNo와 같아야 한다.
+- phase는 현재 scene plan의 phase를 유지한다.
+- sceneTitle은 현재 scene plan의 sceneTitle을 유지하거나 자연스럽게 다듬는다.
+- bodyText에는 현재 장면 본문만 넣는다.
+- bodyText 안에 장면 번호, 제목 설명, JSON 설명, 마크다운을 넣지 않는다.
+- bodyTextEn에는 bodyText를 자연스럽게 번역한 영어 본문만 넣는다.
+- 표지나 이미지 프롬프트는 생성하지 않는다.
+- JSON key는 camelCase를 사용한다.
+- 사용자에게 보이는 message는 한국어로 작성한다.
+
+result 구조:
+{
+"sceneNo": 1,
+"phase": "도입",
+"sceneTitle": "",
+"bodyText": "",
+"bodyTextEn": "",
+"summary": "",
+"nextHook": ""
+}
+
+성공 응답 예시:
+{
+"status": "SUCCESS",
+"taskType": "WRITE_SCENE",
+"message": "현재 장면 본문이 완성되었어요.",
+"result": {
+"sceneNo": 1,
+"phase": "도입",
+"sceneTitle": "",
+"bodyText": "",
+"bodyTextEn": "",
+"summary": "",
+"nextHook": ""
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "WRITE_SCENE"
+}
+
+요청 형식 예시
+
+{
+"taskType": "WRITE_SCENE",
+"draft": {
+"bookType": "NOVEL",
+"meta": {
+"interactionMode": "MIXED",
+"writerLevel": "TEEN",
+"readerAge": "TEEN"
+},
+"setting": {
+"storySeed": "낡은 도서관에서 발견한 이름 없는 편지",
+"genre": "판타지 미스터리",
+"protagonist": "기억을 잃은 견습 기록관",
+"background": "황혼이 내려앉은 오래된 도서관",
+"conflict": "편지를 읽을수록 현실의 기억이 바뀐다",
+"endingDirection": "여운 있는 열린 결말",
+"mood": "몽환적이고 신비로운 분위기",
+"pointOfView": "3인칭 제한 시점",
+"volume": "보통",
+"symbolItem": "이름 없는 편지",
+"title": "황혼 도서관의 이름 없는 편지"
+},
+"outline": {
+"title": "황혼 도서관의 이름 없는 편지",
+"sceneCount": 8,
+"scenes": [
+{
+"sceneNo": 1,
+"phase": "도입",
+"sceneTitle": "황혼의 기록실",
+"sceneSummary": "견습 기록관은 황혼이 깔린 도서관 기록실에서 이름 없는 편지를 발견한다.",
+"sceneGoal": "주인공과 배경, 이야기의 첫 단서를 제시한다.",
+"conflictPoint": "편지의 발신자와 내용이 모두 비어 있어 불안한 궁금증이 생긴다.",
+"characterChoice": "주인공은 편지를 상부에 보고하지 않고 먼저 직접 읽어보기로 한다.",
+"emotionalChange": "무심함에서 호기심과 약한 불안으로 바뀐다.",
+"nextHook": "편지를 펼치는 순간 기록실의 책 제목 하나가 바뀐다."
+}
+]
+},
+"scenes": [],
+"images": {
+"style": "MYSTERY",
+"coverPrompt": "",
+"pagePrompts": []
+}
+},
+"extra": {
+"currentSceneNo": 1,
+"userInput": ""
+}
+}

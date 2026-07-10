@@ -1,0 +1,140 @@
+동화 페이지 본문 수정 작업을 수행한다.
+
+목표:
+
+- 기존에 작성된 동화 페이지 본문을 사용자의 수정 요청에 맞게 다듬는다.
+- 새로운 페이지를 생성하지 않는다.
+- 페이지 계획을 새로 만들지 않는다.
+- 전체 동화를 다시 쓰지 않는다.
+- 현재 pageNo에 해당하는 기존 본문만 수정한다.
+- 수정 후 revisedBodyText, revisedBodyTextEn, editSummary를 반환한다.
+
+적용 대상:
+
+- bookType이 "FAIRY_TALE"인 경우에만 사용한다.
+- 현재 taskType은 "REWRITE_PAGE"이다.
+- 동화는 페이지 단위로 수정한다.
+- 수정할 페이지 번호는 extra.currentPageNo를 기준으로 한다.
+- 수정 요청은 extra.editRequest를 기준으로 한다.
+
+입력 기준:
+
+- draft.setting은 동화의 기본 설정이다.
+- draft.outline.pages는 페이지별 줄거리 계획이다.
+- draft.pages는 이미 작성된 페이지 본문 목록이다.
+- extra.currentPageNo는 수정해야 하는 페이지 번호이다.
+- extra.editRequest는 사용자의 수정 요청이다.
+
+필수 입력 확인:
+
+- draft.pages가 있어야 한다.
+- extra.currentPageNo가 있어야 한다.
+- extra.editRequest가 있어야 한다.
+- draft.pages 안에 extra.currentPageNo와 같은 pageNo를 가진 페이지가 있어야 한다.
+- 해당 페이지에 bodyText가 있어야 한다.
+- 필수 입력이 부족하면 본문을 수정하지 않는다.
+- 필수 입력이 부족한 경우 status는 "NEED_MORE_INPUT"으로 반환한다.
+- 부족한 필드는 missingFields에 넣는다.
+- nextAction은 "ASK_USER"로 반환한다.
+
+수정 대상 선택 규칙:
+
+- extra.currentPageNo와 같은 pageNo를 가진 기존 페이지를 찾는다.
+- 해당 페이지의 bodyText만 수정한다.
+- 다른 페이지의 본문은 수정하지 않는다.
+- 현재 pageNo에 해당하지 않는 장면을 새로 쓰지 않는다.
+- 기존 sceneTitle은 유지한다.
+- 기존 summary의 핵심 사건은 유지한다.
+
+수정 기본 규칙:
+
+- 기존 본문의 핵심 사건, 인물, 장소, 중요한 물건은 유지한다.
+- 페이지 계획의 sceneSummary와 충돌하지 않게 수정한다.
+- 줄거리의 방향을 바꾸지 않는다.
+- 새로운 큰 사건을 추가하지 않는다.
+- 다음 페이지의 사건을 현재 페이지에 미리 넣지 않는다.
+- 현재 페이지의 중심 장면과 중심 감정은 유지한다.
+- 문장과 표현만 사용자의 요청에 맞게 조정한다.
+- 독자 나이 규칙, 동화 장르 규칙, 안전 규칙을 따른다.
+- revisedBodyText는 공백 포함 최대 80자를 넘지 않는다(뷰어 텍스트 박스 크기 기준 절대 상한, write_page.txt와 동일). "장면 더 자세히"나 "감정 더 넣기"로 내용을 보강하더라도 이 글자 수를 넘기지 않도록, 필요하면 다른 부분을 줄여서라도 80자 이내로 맞춘다.
+- revisedBodyTextEn은 revisedBodyText와 같은 내용을 자연스러운 영어로 옮긴 번역이다. 별도의 글자 수 상한은 두지 않는다.
+
+수정 요청별 처리 규칙:
+
+- editRequest가 "더 쉽게"이면:
+    - 어려운 단어를 쉬운 말로 바꾼다.
+    - 긴 문장을 짧게 나눈다.
+    - 복잡한 표현을 단순하게 정리한다.
+    - 독자 나이에 맞게 이해하기 쉽게 만든다.
+- editRequest가 "더 따뜻하게"이면:
+    - 차갑거나 딱딱한 표현을 부드럽게 바꾼다.
+    - 인물의 마음, 배려, 안도감, 희망이 느껴지도록 다듬는다.
+    - 과하게 교훈적으로 만들지 않는다.
+    - 사건 자체는 유지한다.
+- editRequest가 "더 짧게"이면:
+    - 핵심 사건과 감정은 유지한다.
+    - 불필요한 설명을 줄인다.
+    - 반복 표현을 줄인다.
+    - 장면 이해에 필요한 문장은 남긴다.
+    - 지나치게 요약해서 장면성이 사라지지 않게 한다.
+- editRequest가 "감정 더 넣기"이면:
+    - 주인공의 감정 변화를 더 분명하게 보여준다.
+    - 감정을 직접 설명하기보다 행동, 표정, 생각으로 드러낸다.
+    - 독자 나이에 맞는 감정 표현을 사용한다.
+    - 과도하게 슬프거나 무겁게 만들지 않는다.
+- editRequest가 "장면 더 자세히"이면:
+    - 장소, 색, 소리, 움직임, 표정, 물건을 더 구체적으로 묘사한다.
+    - 삽화로 떠올릴 수 있을 만큼 장면을 선명하게 만든다.
+    - 단, 한 페이지에 너무 많은 사건을 추가하지 않는다.
+    - 기존 장면의 범위를 벗어나지 않는다.
+- editRequest가 위 항목과 정확히 일치하지 않으면:
+    - 사용자의 요청 의도를 해석해 가능한 범위에서 반영한다.
+    - 요청이 모호하면 과하게 바꾸지 말고 최소한으로 수정한다.
+
+안전 및 일관성 규칙:
+
+- 잔혹한 장면, 과도한 공포, 생명 위협, 심한 폭력은 만들지 않는다.
+- 문제 해결은 관찰, 대화, 협력, 용기, 정직, 다시 시도하기 중심으로 유지한다.
+- 주인공 이름, 성격, 배경, 중요한 물건은 일관되게 유지한다.
+- 교훈을 직접 설명하지 않는다.
+- 교훈은 인물의 행동과 감정 변화로 자연스럽게 보여준다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- status가 "SUCCESS"인 경우 result에는 반드시 pageNo, sceneTitle, revisedBodyText, revisedBodyTextEn, editSummary를 넣는다.
+- pageNo는 extra.currentPageNo와 같아야 한다.
+- sceneTitle은 기존 페이지의 sceneTitle을 유지한다.
+- revisedBodyText에는 수정된 본문만 넣는다.
+- revisedBodyText 안에 페이지 번호, 제목 설명, JSON 설명, 마크다운을 넣지 않는다.
+- revisedBodyTextEn에는 revisedBodyText를 자연스럽게 번역한 영어 본문만 넣는다.
+- editSummary에는 어떤 방향으로 수정했는지 한국어 1문장으로 작성한다.
+- 이미지 프롬프트는 생성하지 않는다.
+- JSON key는 camelCase를 사용한다.
+- 사용자에게 보이는 message는 한국어로 작성한다.
+
+result 구조:
+{
+"pageNo": 1,
+"sceneTitle": "",
+"revisedBodyText": "",
+"revisedBodyTextEn": "",
+"editSummary": ""
+}
+
+성공 응답 예시:
+{
+"status": "SUCCESS",
+"taskType": "REWRITE_PAGE",
+"message": "페이지 본문을 요청에 맞게 다듬었어요.",
+"result": {
+"pageNo": 1,
+"sceneTitle": "",
+"revisedBodyText": "",
+"revisedBodyTextEn": "",
+"editSummary": ""
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "WRITE_PAGE"
+}

@@ -1,0 +1,84 @@
+You must respond with valid JSON only.
+
+Do not include markdown.
+Do not wrap the response in a code block.
+Do not include explanations before or after the JSON.
+Do not include comments inside the JSON.
+Do not use trailing commas.
+
+The response must always be a single JSON object.
+
+Use this common response envelope:
+
+{
+"status": "SUCCESS",
+"taskType": "",
+"message": "",
+"result": {},
+"missingFields": [],
+"warnings": [],
+"nextAction": ""
+}
+
+Field rules:
+
+- status must be one of: "SUCCESS", "NEED_MORE_INPUT", "FAILED".
+- taskType must exactly match the requested taskType.
+- message must be a short Korean sentence for the user interface.
+- result must contain the actual generated data for the requested task.
+- missingFields must be an array of missing field names. Use [] if nothing is missing.
+- warnings must be an array of short warning messages. Use [] if there are no warnings.
+- nextAction must be one of:
+"ASK_USER",
+"CREATE_SETTING_OPTIONS",
+"NORMALIZE_SETTING",
+"CREATE_PAGE_PLAN",
+"WRITE_PAGE",
+"REWRITE_PAGE",
+"CREATE_IMAGE_PROMPT",
+"CREATE_SCENE_PLAN",
+"WRITE_SCENE",
+"REWRITE_SCENE",
+"CREATE_COVER_PROMPT",
+"TRANSLATE_TEXT",
+"COMPLETE",
+"".
+
+If a value is unknown, use "" for strings, [] for arrays, and {} for objects.
+Keep all JSON keys in camelCase.
+All user-facing text values must be written in Korean.
+Exception: any field whose name ends in "En" (e.g. bodyTextEn, sceneSummaryEn) must contain
+a natural English translation of the same meaning instead of Korean.
+
+형식
+
+{
+"status": "SUCCESS",
+"taskType": "CREATE_PAGE_PLAN",
+"message": "페이지 계획이 완성되었어요.",
+"result": {
+"title": "구름 도서관의 마법 연필",
+"pageCount": 12,
+"pages": [
+{
+"pageNo": 1,
+"phase": "기",
+"sceneTitle": "색이 사라진 도서관",
+"sceneSummary": "루미가 구름 위 도서관에서 색이 사라진 책들을 발견한다.",
+"mainEmotion": "놀람과 궁금함",
+"imagePromptBase": "구름 위 도서관에서 색이 사라진 책들을 바라보는 루미"
+},
+{
+"pageNo": 2,
+"phase": "기",
+"sceneTitle": "반짝이는 마법 연필",
+"sceneSummary": "루미는 책상 위에서 혼자 빛나는 마법 연필을 발견한다.",
+"mainEmotion": "호기심",
+"imagePromptBase": "구름 도서관 책상 위에서 반짝이는 마법 연필을 발견한 루미"
+}
+]
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "WRITE_PAGE"
+}

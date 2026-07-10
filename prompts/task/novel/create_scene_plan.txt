@@ -1,0 +1,166 @@
+소설 장면 계획 생성 작업을 수행한다.
+
+목표:
+
+- 제공된 소설 setting을 바탕으로 전체 소설의 장면별 계획을 만든다.
+- 각 장면이 어떤 사건, 갈등, 감정 변화, 선택을 담당하는지 명확하게 정리한다.
+- 이 작업에서는 실제 본문을 작성하지 않는다.
+- 이 작업에서는 표지나 이미지 프롬프트를 생성하지 않는다.
+- 이 작업에서는 장면별 줄거리 계획만 만든다.
+
+적용 대상:
+
+- bookType이 "NOVEL"인 경우에만 사용한다.
+- 소설은 페이지 단위가 아니라 장면 또는 챕터 단위로 구성한다.
+- 각 장면은 하나의 목표, 갈등, 선택, 감정 변화를 가진다.
+
+입력 기준:
+
+- draft.setting에 있는 값을 중심으로 장면 계획을 만든다.
+- storySeed는 이야기의 출발점으로 사용한다.
+- genre는 사건 유형과 분위기에 반영한다.
+- protagonist는 주인공의 행동, 감정, 선택의 중심으로 사용한다.
+- background는 주요 배경과 장면 분위기에 반영한다.
+- conflict는 이야기의 중심 갈등으로 사용한다.
+- endingDirection은 결말의 방향과 정서에 반영한다.
+- mood가 제공된 경우 전체 분위기와 장면 톤에 반영한다.
+- pointOfView가 제공된 경우 시점 기준으로 사용한다.
+- volume이 제공된 경우 전체 장면 수와 분량에 반영한다.
+- symbolItem이 제공된 경우 반복되는 상징이나 복선으로 활용한다.
+- title이 제공된 경우 제목을 유지한다.
+- title이 비어 있으면 이야기와 어울리는 제목을 생성한다.
+
+필수 설정 확인:
+
+- storySeed, genre, protagonist, background, conflict, endingDirection이 모두 있어야 한다.
+- 필수 설정이 부족하면 장면 계획을 생성하지 않는다.
+- 필수 설정이 부족한 경우 status는 "NEED_MORE_INPUT"으로 반환한다.
+- 부족한 필드는 missingFields에 넣는다.
+- nextAction은 "ASK_USER"로 반환한다.
+
+장면 수 기준:
+
+- volume이 "짧게" 또는 "SHORT"이면 5~7개 장면으로 구성한다.
+- volume이 "보통" 또는 "MEDIUM"이면 8~12개 장면으로 구성한다.
+- volume이 "길게" 또는 "LONG"이면 13~18개 장면으로 구성한다.
+- volume이 비어 있으면 8개 장면을 기본값으로 사용한다.
+- 장면 수는 이야기의 흐름을 해치지 않는 범위에서 조정할 수 있다.
+
+전체 구조 기준:
+
+- 초반부에는 주인공, 배경, 현재 상황, 핵심 갈등의 단서를 제시한다.
+- 전개부에는 주인공이 갈등을 해결하려고 시도하고, 그 과정에서 관계나 상황이 복잡해지도록 한다.
+- 중반부에는 주인공의 선택을 어렵게 만드는 전환점이나 새로운 정보를 배치한다.
+- 후반부에는 중심 갈등이 가장 분명하게 드러나고, 주인공이 중요한 선택을 하도록 한다.
+- 결말부에는 주인공의 선택이 만든 결과와 변화를 보여준다.
+- 결말은 endingDirection과 자연스럽게 연결되어야 한다.
+
+사건 전개 규칙:
+
+- 장면은 단순히 나열하지 않는다.
+- 각 장면은 이전 장면의 결과이거나 다음 장면의 원인이 되어야 한다.
+- “그리고 일어난 사건”보다 “그래서 일어난 사건”이 되도록 구성한다.
+- 각 장면에는 새로운 정보, 감정 변화, 선택의 압력, 관계 변화 중 하나 이상이 있어야 한다.
+- 우연을 사용할 수 있지만, 중요한 해결을 우연에만 의존하지 않는다.
+- 모든 장면은 주인공의 목표, 갈등, 관계, 변화와 연결되어야 한다.
+
+인물 규칙:
+
+- 주인공은 사건을 수동적으로 겪기만 하지 않는다.
+- 주인공은 각 주요 장면에서 관찰, 판단, 회피, 선택, 행동 중 하나 이상을 해야 한다.
+- 주인공의 선택은 다음 장면의 사건이나 감정 변화에 영향을 주어야 한다.
+- 조연이 등장할 경우 주인공의 갈등, 선택, 관계 변화에 영향을 주어야 한다.
+- 인물의 변화는 갑작스럽지 않고 장면의 흐름에 따라 쌓여야 한다.
+
+갈등 규칙:
+
+- conflict는 이야기 전체를 관통하는 중심 갈등으로 유지한다.
+- 각 장면의 작은 갈등은 중심 갈등과 연결되어야 한다.
+- 갈등은 인물의 욕망, 두려움, 약점, 관계, 비밀, 선택을 드러내야 한다.
+- 갈등의 수위와 표현 방식은 독자 나이 규칙과 safety 규칙을 따른다.
+- 갈등은 반드시 완전히 해결되지 않아도 되지만, 결말에서 의미 있는 선택이나 변화로 이어져야 한다.
+
+복선과 전환 규칙:
+
+- symbolItem이 제공된 경우 반복되는 상징이나 복선으로 사용할 수 있다.
+- 복선은 나중에 회수될 수 있는 형태로 배치한다.
+- twistFlag가 true인 경우, 반전이 갑작스럽지 않도록 앞선 장면에 납득 가능한 단서를 배치한다.
+- 반전은 사용할 수 있지만 이야기의 핵심 흐름을 무너뜨리면 안 된다.
+- 독자가 궁금해할 만한 질문을 남기되, 이해하기 어려울 정도로 정보를 숨기지 않는다.
+
+장면별 계획 규칙:
+
+- 각 장면에는 sceneNo, phase, sceneTitle, sceneSummary, sceneGoal, conflictPoint, characterChoice, emotionalChange, nextHook을 포함한다.
+- sceneNo는 1부터 sceneCount까지 순서대로 작성한다.
+- phase는 "도입", "전개", "전환", "절정", "결말" 중 하나만 사용한다.
+- sceneTitle은 짧고 구체적으로 작성한다.
+- sceneSummary는 해당 장면에서 일어나는 일을 1~2문장으로 요약한다.
+- sceneGoal은 해당 장면이 전체 이야기에서 맡는 역할을 작성한다.
+- conflictPoint는 해당 장면에서 드러나는 갈등이나 압박을 작성한다.
+- characterChoice는 주인공이 하는 선택, 회피, 행동, 판단을 작성한다.
+- emotionalChange는 장면 전후의 감정 변화를 작성한다.
+- nextHook은 다음 장면으로 이어지는 단서, 질문, 감정, 사건을 작성한다.
+
+제목 생성 규칙:
+
+- draft.setting.title이 있으면 그 제목을 유지한다.
+- title이 비어 있으면 storySeed, genre, protagonist, conflict, symbolItem을 참고해 소설 제목을 생성한다.
+- 제목은 이야기의 핵심 이미지와 분위기에 어울려야 한다.
+- 제목은 너무 길지 않게 작성한다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- status가 "SUCCESS"인 경우 result에는 반드시 title, sceneCount, scenes를 넣는다.
+- result.scenes의 길이는 반드시 sceneCount와 같아야 한다.
+- sceneNo는 중복되거나 빠지면 안 된다.
+- 실제 본문 bodyText는 생성하지 않는다.
+- 이미지 생성용 prompt는 생성하지 않는다.
+- JSON key는 camelCase를 사용한다.
+- 사용자에게 보이는 message는 한국어로 작성한다.
+
+result 구조:
+{
+"title": "",
+"sceneCount": 8,
+"scenes": [
+{
+"sceneNo": 1,
+"phase": "도입",
+"sceneTitle": "",
+"sceneSummary": "",
+"sceneGoal": "",
+"conflictPoint": "",
+"characterChoice": "",
+"emotionalChange": "",
+"nextHook": ""
+}
+]
+}
+
+성공 응답 예시:
+{
+"status": "SUCCESS",
+"taskType": "CREATE_SCENE_PLAN",
+"message": "소설 장면 계획이 완성되었어요.",
+"result": {
+"title": "",
+"sceneCount": 8,
+"scenes": [
+{
+"sceneNo": 1,
+"phase": "도입",
+"sceneTitle": "",
+"sceneSummary": "",
+"sceneGoal": "",
+"conflictPoint": "",
+"characterChoice": "",
+"emotionalChange": "",
+"nextHook": ""
+}
+]
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "WRITE_SCENE"
+}

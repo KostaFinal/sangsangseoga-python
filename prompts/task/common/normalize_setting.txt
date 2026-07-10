@@ -1,0 +1,159 @@
+설정 정리 작업을 수행한다.
+
+목표:
+
+- 사용자가 입력하거나 선택한 값을 현재 bookType에 맞는 공통 setting 구조로 정리한다.
+- FREE, MIXED, CHOICE 방식에서 들어온 값이 서로 달라도 최종 setting 구조는 동일하게 맞춘다.
+- 사용자의 원래 표현과 핵심 의도는 최대한 유지한다.
+- 부족한 필수 설정이 있는지 확인한다.
+- 이 작업에서는 본문, 페이지 계획, 장면 계획, 이미지 프롬프트를 생성하지 않는다.
+
+입력 해석 기준:
+
+- 현재 bookType이 "FAIRY_TALE"이면 동화 setting 구조로 정리한다.
+- 현재 bookType이 "NOVEL"이면 소설 setting 구조로 정리한다.
+- interactionMode가 "FREE"이면 사용자의 자유 입력을 해석해 필요한 필드에 배치한다.
+- interactionMode가 "MIXED"이면 사용자의 직접 입력값을 추천 선택값보다 우선한다.
+- interactionMode가 "CHOICE"이면 선택된 option.value를 최우선으로 사용한다.
+- 사용자가 직접 입력한 고유명사, 장소, 중요한 물건, 핵심 사건은 유지한다.
+- 사용자의 입력을 완전히 다른 방향으로 바꾸지 않는다.
+- 애매한 값은 과하게 추측하지 않는다.
+- 필수 설정이 부족하면 status를 "NEED_MORE_INPUT"으로 처리한다.
+- 선택 설정이 비어 있으면 빈 문자열 "" 또는 빈 배열 []로 유지한다.
+
+동화 setting 구조:
+{
+"storySeed": "",
+"pageCount": 12,
+"protagonistName": "",
+"protagonistDesc": "",
+"backgroundPlace": "",
+"problem": "",
+"importantObject": "",
+"mood": "",
+"title": ""
+}
+
+동화 필수 설정:
+
+- storySeed
+- pageCount
+- protagonistName
+- protagonistDesc
+- backgroundPlace
+- problem
+
+동화 선택 설정:
+
+- importantObject
+- mood
+- title
+
+동화 필드 매핑 규칙:
+
+- "seed"는 storySeed로 정리한다.
+- "storySeed"는 storySeed로 정리한다.
+- "character"는 protagonistName 또는 protagonistDesc로 정리한다.
+- "protagonist"는 protagonistName 또는 protagonistDesc로 정리한다.
+- protagonist에 이름과 설명이 함께 들어 있으면 둘로 나눈다.
+- 예: "루미, 상상력이 많지만 조금 소심한 아이"는 protagonistName="루미", protagonistDesc="상상력이 많지만 조금 소심한 아이"로 정리한다.
+- "setting", "place", "background", "backgroundPlace"는 backgroundPlace로 정리한다.
+- "event", "goal", "conflict", "problem"은 problem으로 정리한다.
+- "importantObject", "object", "item"은 importantObject로 정리한다.
+- "mood", "tone"은 mood로 정리한다.
+- pageCount는 숫자로 변환한다.
+- pageCount가 없으면 12를 기본값으로 사용할 수 있다.
+- title이 없으면 빈 문자열 ""로 둔다.
+
+소설 setting 구조:
+{
+"storySeed": "",
+"genre": "",
+"protagonist": "",
+"background": "",
+"conflict": "",
+"endingDirection": "",
+"mood": "",
+"pointOfView": "",
+"volume": "",
+"symbolItem": "",
+"title": ""
+}
+
+소설 필수 설정:
+
+- storySeed
+- genre
+- protagonist
+- background
+- conflict
+- endingDirection
+
+소설 선택 설정:
+
+- mood
+- pointOfView
+- volume
+- symbolItem
+- title
+
+소설 필드 매핑 규칙:
+
+- "storySeed"는 storySeed로 정리한다.
+- "seed"는 storySeed로 정리한다.
+- "genre"는 genre로 정리한다.
+- "protagonist", "character"는 protagonist로 정리한다.
+- "background", "setting", "place"는 background로 정리한다.
+- "conflict", "problem", "갈등 / 문제"는 conflict로 정리한다.
+- "ending", "endingDirection", "결말 방향"은 endingDirection으로 정리한다.
+- "mood", "tone", "분위기"는 mood로 정리한다.
+- "pointOfView", "pov", "시점"은 pointOfView로 정리한다.
+- "volume", "length", "분량"은 volume으로 정리한다.
+- "symbolItem", "symbol", "importantObject"는 symbolItem으로 정리한다.
+- title이 없으면 빈 문자열 ""로 둔다.
+- conflict와 problem이 둘 다 제공된 경우, conflict를 중심 갈등으로 우선 사용한다.
+
+선택형 selectedOptions 처리 규칙:
+
+- selectedOptions가 제공되면 각 option의 value를 우선 사용한다.
+- option.value가 객체이면 객체 안의 값을 그대로 사용한다.
+- option.value가 없으면 title과 desc를 참고해 의미를 해석한다.
+- 선택되지 않은 option은 setting에 반영하지 않는다.
+- 선택형에서 필수 설정이 빠졌으면 해당 필드를 missingFields에 넣는다.
+- 선택형의 누락 필드는 자유 질문으로 길게 묻지 말고, 해당 선택 단계로 돌아가도록 안내한다.
+
+혼합형 입력 처리 규칙:
+
+- 직접 입력값이 있으면 직접 입력값을 우선 사용한다.
+- 직접 입력값이 비어 있고 추천안이 선택되어 있으면 추천안 값을 사용한다.
+- 직접 입력값과 추천안이 충돌하면 직접 입력값을 최종 의도로 본다.
+- 직접 입력값이 짧거나 어색하면 자연스럽게 다듬을 수 있다.
+- 단, 사용자의 핵심 의도를 바꾸지 않는다.
+
+자유형 입력 처리 규칙:
+
+- 사용자가 짧게 입력해도 핵심 의미를 파악해 적절한 필드에 배치한다.
+- 하나의 문장 안에 여러 설정이 포함되어 있으면 관련 필드로 나누어 정리한다.
+- 애매한 표현은 임의로 확정하지 않고 missingFields 또는 message로 추가 확인을 요청한다.
+- 사용자의 표현을 과하게 확장하지 않는다.
+
+필수값 검증 규칙:
+
+- 현재 bookType의 필수 설정이 모두 채워졌는지 확인한다.
+- 필수 설정이 모두 있으면 status는 "SUCCESS"로 반환한다.
+- 필수 설정이 부족하면 status는 "NEED_MORE_INPUT"으로 반환한다.
+- 부족한 필드는 missingFields에 넣는다.
+- message에는 사용자에게 보여줄 짧은 안내 문장을 넣는다.
+- 필수 설정이 부족한 상태에서는 nextAction을 "ASK_USER"로 반환한다.
+- 필수 설정이 모두 있으면 다음 단계에 맞게 nextAction을 반환한다.
+    - 동화는 보통 "CREATE_PAGE_PLAN"으로 반환한다.
+    - 소설은 보통 "CREATE_SCENE_PLAN"으로 반환한다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- result에는 반드시 정리된 setting 객체를 넣는다.
+- bookType이 "FAIRY_TALE"이면 result.setting은 동화 setting 구조를 따른다.
+- bookType이 "NOVEL"이면 result.setting은 소설 setting 구조를 따른다.
+- JSON key는 camelCase를 사용한다.
+- 사용자에게 보이는 message는 한국어로 작성한다.

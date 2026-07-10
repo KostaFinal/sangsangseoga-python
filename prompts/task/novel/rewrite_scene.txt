@@ -1,0 +1,294 @@
+소설 장면 본문 수정 작업을 수행한다.
+
+목표:
+
+- 기존에 작성된 소설 장면 본문을 사용자의 수정 요청에 맞게 다듬는다.
+- 새로운 장면을 생성하지 않는다.
+- 장면 계획을 새로 만들지 않는다.
+- 전체 소설을 다시 쓰지 않는다.
+- 현재 sceneNo에 해당하는 기존 본문만 수정한다.
+- 표지나 이미지 프롬프트를 생성하지 않는다.
+- 수정 후 revisedBodyText, revisedBodyTextEn, editSummary를 반환한다.
+
+적용 대상:
+
+- bookType이 "NOVEL"인 경우에만 사용한다.
+- 현재 taskType은 "REWRITE_SCENE"이다.
+- 소설은 장면 단위로 수정한다.
+- 수정할 장면 번호는 extra.currentSceneNo를 기준으로 한다.
+- 수정 요청은 extra.editRequest를 기준으로 한다.
+
+입력 기준:
+
+- draft.setting은 소설의 기본 설정이다.
+- draft.outline.scenes는 장면별 계획이다.
+- draft.scenes는 이미 작성된 장면 본문 목록이다.
+- draft.scenes가 없고 draft.pages만 제공된 경우 draft.pages를 기존 장면 본문 목록으로 해석할 수 있다.
+- extra.currentSceneNo는 수정해야 하는 장면 번호이다.
+- extra.editRequest는 사용자의 수정 요청이다.
+
+필수 입력 확인:
+
+- draft.setting이 있어야 한다.
+- draft.scenes 또는 draft.pages가 있어야 한다.
+- extra.currentSceneNo가 있어야 한다.
+- extra.editRequest가 있어야 한다.
+- 기존 장면 목록 안에 extra.currentSceneNo와 같은 sceneNo를 가진 장면이 있어야 한다.
+- 해당 장면에 bodyText가 있어야 한다.
+- 필수 입력이 부족하면 본문을 수정하지 않는다.
+- 필수 입력이 부족한 경우 status는 "NEED_MORE_INPUT"으로 반환한다.
+- 부족한 필드는 missingFields에 넣는다.
+- nextAction은 "ASK_USER"로 반환한다.
+
+수정 대상 선택 규칙:
+
+- extra.currentSceneNo와 같은 sceneNo를 가진 기존 장면을 찾는다.
+- 해당 장면의 bodyText만 수정한다.
+- 다른 장면의 본문은 수정하지 않는다.
+- 현재 sceneNo에 해당하지 않는 장면을 새로 쓰지 않는다.
+- 기존 sceneTitle은 유지한다.
+- 기존 phase는 유지한다.
+- 기존 summary의 핵심 사건은 유지한다.
+- draft.outline.scenes에 같은 sceneNo의 scene plan이 있으면 해당 계획과 충돌하지 않게 수정한다.
+
+수정 기본 규칙:
+
+- 기존 본문의 핵심 사건, 인물, 장소, 갈등, 선택, 감정 변화는 유지한다.
+- 장면 계획의 sceneSummary, sceneGoal, conflictPoint, characterChoice, emotionalChange와 충돌하지 않게 수정한다.
+- 줄거리의 방향을 바꾸지 않는다.
+- 새로운 큰 사건을 추가하지 않는다.
+- 다음 장면의 핵심 사건을 현재 장면에 미리 넣지 않는다.
+- 결말이나 반전을 미리 스포일러하지 않는다.
+- 현재 장면의 중심 목표, 갈등, 선택, 감정 변화는 유지한다.
+- 문장, 문체, 묘사, 감정 표현만 사용자의 요청에 맞게 조정한다.
+- 독자 나이 규칙, 소설 장르 규칙, 안전 규칙을 따른다.
+
+수정 요청별 처리 규칙:
+
+- editRequest가 "더 쉽게"이면:
+    - 어려운 단어를 쉬운 말로 바꾼다.
+    - 긴 문장을 적절히 나눈다.
+    - 복잡한 비유나 추상적인 표현을 줄인다.
+    - 독자 나이에 맞게 이해하기 쉽게 만든다.
+    - 사건 자체는 유지한다.
+- editRequest가 "더 문학적으로"이면:
+    - 장면의 분위기, 상징, 여운을 강화한다.
+    - 문장을 더 자연스럽고 완성도 있게 다듬는다.
+    - 비유와 감각 묘사를 사용할 수 있다.
+    - 단, 지나치게 난해하거나 장황하게 만들지 않는다.
+    - 사건의 흐름은 유지한다.
+- editRequest가 "더 짧게"이면:
+    - 핵심 사건, 갈등, 선택, 감정 변화는 유지한다.
+    - 불필요한 설명과 반복 표현을 줄인다.
+    - 장면의 중심이 사라지지 않게 한다.
+    - 지나치게 요약해서 장면성이 사라지지 않게 한다.
+- editRequest가 "더 길게"이면:
+    - 기존 장면의 범위 안에서 묘사와 감정 흐름을 보강한다.
+    - 배경, 행동, 대화, 내면 묘사를 자연스럽게 추가한다.
+    - 새로운 큰 사건은 추가하지 않는다.
+    - 다음 장면의 사건을 미리 넣지 않는다.
+- editRequest가 "감정 더 넣기"이면:
+    - 주인공의 감정 변화가 더 분명하게 느껴지도록 수정한다.
+    - 감정을 직접 설명하기보다 행동, 표정, 말투, 생각으로 드러낸다.
+    - 감정이 과도하게 극단적으로 변하지 않게 한다.
+    - 장면의 갈등과 선택에 맞는 감정만 보강한다.
+- editRequest가 "긴장감 더 넣기"이면:
+    - 갈등, 불확실성, 선택의 압박을 강화한다.
+    - 작은 단서, 침묵, 분위기, 대화의 어긋남을 활용할 수 있다.
+    - 과도한 공포나 폭력으로 긴장감을 만들지 않는다.
+    - 결말이나 반전을 직접 드러내지 않는다.
+- editRequest가 "대화 더 자연스럽게"이면:
+    - 대사가 인물의 성격과 관계에 맞도록 다듬는다.
+    - 설명식 대사를 줄인다.
+    - 대화 사이에 행동, 표정, 침묵을 적절히 넣는다.
+    - 대사만으로 장면이 구성되지 않게 한다.
+- editRequest가 "묘사 더 자세히"이면:
+    - 장소, 빛, 소리, 온도, 사물, 표정, 움직임을 더 구체적으로 묘사한다.
+    - 배경 묘사는 장면의 분위기와 갈등을 강화하는 방향으로 사용한다.
+    - 불필요한 장식적 묘사를 과하게 늘리지 않는다.
+    - 기존 장면의 범위를 벗어나지 않는다.
+- editRequest가 "속도감 있게"이면:
+    - 불필요한 내면 설명과 배경 설명을 줄인다.
+    - 행동과 대화 중심으로 장면을 정리한다.
+    - 핵심 갈등과 선택이 빠르게 드러나도록 한다.
+    - 단, 장면의 감정 변화가 갑작스럽게 느껴지지 않게 한다.
+- editRequest가 위 항목과 정확히 일치하지 않으면:
+    - 사용자의 요청 의도를 해석해 가능한 범위에서 반영한다.
+    - 요청이 모호하면 과하게 바꾸지 말고 최소한으로 수정한다.
+    - 기존 장면의 사건과 의미를 유지한다.
+
+시점 유지 규칙:
+
+- draft.setting.pointOfView가 있으면 해당 시점을 유지한다.
+- 기존 본문이 1인칭이면 1인칭을 유지한다.
+- 기존 본문이 3인칭이면 3인칭을 유지한다.
+- 시점을 임의로 바꾸지 않는다.
+- 3인칭 제한 시점에서는 주인공이 알 수 없는 정보를 갑자기 넣지 않는다.
+- 1인칭 시점에서는 화자의 감각과 생각을 중심으로 수정한다.
+
+연속성 규칙:
+
+- 주인공, 배경, 중심 갈등, 분위기, 상징물을 일관되게 유지한다.
+- 이전 장면에서 이어진 갈등을 갑자기 해결하지 않는다.
+- 다음 장면으로 이어질 nextHook의 방향을 해치지 않는다.
+- symbolItem이 있으면 기존 사용 방식과 어긋나지 않게 유지한다.
+- 반전이나 비밀이 있는 경우 너무 일찍 직접적으로 드러내지 않는다.
+
+안전 및 표현 규칙:
+
+- 과도한 폭력, 잔혹한 묘사, 선정적 묘사, 현실적인 공포 묘사는 만들지 않는다.
+- 독자 나이에 맞지 않는 표현은 완화한다.
+- 갈등은 인물의 선택, 관계, 비밀, 욕망, 두려움, 오해, 사회적 압박 등으로 표현한다.
+- 장면의 긴장감을 폭력이나 잔혹함에 의존하지 않는다.
+
+revisedBodyTextEn 작성 규칙:
+
+- revisedBodyTextEn은 revisedBodyText와 같은 내용을 자연스러운 영어로 옮긴 번역이다.
+- revisedBodyText에 없는 사건이나 설명을 추가하지 않는다.
+
+summary 처리 규칙:
+
+- 기존 summary의 핵심 사건이 유지되면 summary는 크게 바꾸지 않는다.
+- 수정으로 인해 summary 조정이 필요하면 result.summary에 수정된 요약을 넣을 수 있다.
+- summary는 현재 장면의 내용을 1문장으로 요약한다.
+- 다음 장면의 사건을 summary에 미리 넣지 않는다.
+
+nextHook 처리 규칙:
+
+- 기존 nextHook이 장면과 잘 맞으면 유지한다.
+- 수정으로 인해 nextHook 조정이 필요하면 result.nextHook에 수정된 hook을 넣을 수 있다.
+- nextHook은 다음 장면으로 이어지는 단서, 질문, 감정, 사건이어야 한다.
+- 결말이나 반전을 직접 스포일러하지 않는다.
+- 현재 장면이 마지막 장면이라면 nextHook은 빈 문자열 ""로 둔다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- status가 "SUCCESS"인 경우 result에는 반드시 sceneNo, phase, sceneTitle, revisedBodyText, revisedBodyTextEn, editSummary를 넣는다.
+- sceneNo는 extra.currentSceneNo와 같아야 한다.
+- phase는 기존 장면의 phase 또는 scene plan의 phase를 유지한다.
+- sceneTitle은 기존 장면의 sceneTitle을 유지한다.
+- revisedBodyText에는 수정된 본문만 넣는다.
+- revisedBodyText 안에 장면 번호, 제목 설명, JSON 설명, 마크다운을 넣지 않는다.
+- revisedBodyTextEn에는 revisedBodyText를 자연스럽게 번역한 영어 본문만 넣는다.
+- editSummary에는 어떤 방향으로 수정했는지 한국어 1문장으로 작성한다.
+- summary와 nextHook은 필요한 경우 result에 포함할 수 있다.
+- 표지나 이미지 프롬프트는 생성하지 않는다.
+- JSON key는 camelCase를 사용한다.
+- 사용자에게 보이는 message는 한국어로 작성한다.
+
+result 구조:
+{
+"sceneNo": 1,
+"phase": "도입",
+"sceneTitle": "",
+"revisedBodyText": "",
+"revisedBodyTextEn": "",
+"editSummary": "",
+"summary": "",
+"nextHook": ""
+}
+
+성공 응답 예시:
+{
+"status": "SUCCESS",
+"taskType": "REWRITE_SCENE",
+"message": "장면 본문을 요청에 맞게 다듬었어요.",
+"result": {
+"sceneNo": 1,
+"phase": "도입",
+"sceneTitle": "",
+"revisedBodyText": "",
+"revisedBodyTextEn": "",
+"editSummary": "",
+"summary": "",
+"nextHook": ""
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "WRITE_SCENE"
+}
+
+요청 예시
+
+{
+"taskType": "REWRITE_SCENE",
+"draft": {
+"bookType": "NOVEL",
+"meta": {
+"interactionMode": "MIXED",
+"writerLevel": "TEEN",
+"readerAge": "TEEN"
+},
+"setting": {
+"storySeed": "낡은 도서관에서 발견한 이름 없는 편지",
+"genre": "판타지 미스터리",
+"protagonist": "기억을 잃은 견습 기록관",
+"background": "황혼이 내려앉은 오래된 도서관",
+"conflict": "편지를 읽을수록 현실의 기억이 바뀐다",
+"endingDirection": "여운 있는 열린 결말",
+"mood": "몽환적이고 신비로운 분위기",
+"pointOfView": "3인칭 제한 시점",
+"volume": "보통",
+"symbolItem": "이름 없는 편지",
+"title": "황혼 도서관의 이름 없는 편지"
+},
+"outline": {
+"title": "황혼 도서관의 이름 없는 편지",
+"sceneCount": 8,
+"scenes": [
+{
+"sceneNo": 1,
+"phase": "도입",
+"sceneTitle": "황혼의 기록실",
+"sceneSummary": "견습 기록관은 황혼이 깔린 도서관 기록실에서 이름 없는 편지를 발견한다.",
+"sceneGoal": "주인공과 배경, 이야기의 첫 단서를 제시한다.",
+"conflictPoint": "편지의 발신자와 내용이 모두 비어 있어 불안한 궁금증이 생긴다.",
+"characterChoice": "주인공은 편지를 상부에 보고하지 않고 먼저 직접 읽어보기로 한다.",
+"emotionalChange": "무심함에서 호기심과 약한 불안으로 바뀐다.",
+"nextHook": "편지를 펼치는 순간 기록실의 책 제목 하나가 바뀐다."
+}
+]
+},
+"scenes": [
+{
+"sceneNo": 1,
+"phase": "도입",
+"sceneTitle": "황혼의 기록실",
+"bodyText": "황혼이 도서관의 높은 창을 지나 기록실 바닥에 길게 누워 있었다. 견습 기록관은 하루의 마지막 장부를 정리하다가, 분류되지 않은 서랍 안에서 봉투 하나를 발견했다. 봉투에는 발신자도, 수신자도, 날짜도 적혀 있지 않았다.",
+"summary": "견습 기록관은 황혼의 기록실에서 이름 없는 편지를 발견한다.",
+"nextHook": "편지를 펼치는 순간 기록실의 책 제목 하나가 바뀐다."
+}
+],
+"images": {
+"style": "MYSTERY",
+"coverPrompt": "",
+"pagePrompts": []
+}
+},
+"extra": {
+"currentSceneNo": 1,
+"editRequest": "긴장감 더 넣기"
+}
+}
+
+응답예시
+
+{
+"status": "SUCCESS",
+"taskType": "REWRITE_SCENE",
+"message": "장면 본문에 긴장감을 더했어요.",
+"result": {
+"sceneNo": 1,
+"phase": "도입",
+"sceneTitle": "황혼의 기록실",
+"revisedBodyText": "황혼이 도서관의 높은 창을 지나 기록실 바닥에 길게 누워 있었다. 견습 기록관은 하루의 마지막 장부를 정리하다가, 분류되지 않은 서랍 안에서 봉투 하나를 발견했다. 봉투에는 발신자도, 수신자도, 날짜도 적혀 있지 않았다. 이상한 점은 그것뿐만이 아니었다. 방금 전까지 잠겨 있던 서랍이, 아무 소리도 없이 조금 열려 있었다. 그는 봉투를 집어 들기 전 잠시 숨을 멈췄다. 기록실 안에는 책장이 내는 작은 삐걱임만 낮게 번졌다.",
+"revisedBodyTextEn": "Dusk stretched long across the archive room floor, filtering through the library's high windows. The apprentice archivist, tidying the day's final ledger, found an envelope tucked inside an unsorted drawer. It bore no sender, no recipient, no date. And that wasn't the only strange thing - the drawer, locked only moments ago, now stood slightly open without a sound. He held his breath before picking up the envelope. In the archive room, only the faint creak of the bookshelves lingered low.",
+"editSummary": "기존 사건은 유지하면서 서랍과 기록실 분위기를 활용해 긴장감을 강화했습니다.",
+"summary": "견습 기록관은 황혼의 기록실에서 이상하게 열려 있던 서랍 속 이름 없는 편지를 발견한다.",
+"nextHook": "편지를 펼치는 순간 기록실의 책 제목 하나가 바뀐다."
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "WRITE_SCENE"
+}

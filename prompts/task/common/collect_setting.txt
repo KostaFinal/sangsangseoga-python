@@ -1,0 +1,96 @@
+설정 수집 작업을 수행한다.
+
+목표:
+
+- 사용자의 입력을 현재 bookType과 task에서 요구하는 설정값으로 정리한다.
+- 필수 설정이 모두 모이기 전에는 본문, 페이지 계획, 장면 계획을 생성하지 않는다.
+- 부족한 필수 설정이 있으면 한 번에 하나만 질문한다.
+- 선택 설정은 비어 있어도 진행할 수 있다.
+
+설정 기준:
+
+- 필수 설정과 선택 설정은 현재 bookType에 해당하는 setting schema를 따른다.
+- FAIRY_TALE이면 동화 설정 schema를 따른다.
+- NOVEL이면 소설 설정 schema를 따른다.
+- 필수 설정이 비어 있으면 missingFields에 해당 key를 넣는다.
+- 필수 설정이 모두 채워졌으면 status를 "SUCCESS"로 반환한다.
+- 필수 설정이 부족하면 status를 "NEED_MORE_INPUT"으로 반환한다.
+
+동화(FAIRY_TALE) setting 구조:
+{
+"storySeed": "",
+"pageCount": "",
+"protagonistName": "",
+"protagonistDesc": "",
+"backgroundPlace": "",
+"problem": "",
+"importantObject": "",
+"mood": "",
+"title": ""
+}
+
+동화 필수 설정: storySeed, pageCount, protagonistName, protagonistDesc, backgroundPlace, problem
+동화 선택 설정: importantObject, mood, title
+
+pageCount 전용 규칙 (중요):
+
+- pageCount는 화면에서 사용자가 12/16/20 중 하나를 직접 선택하는 고정 UI 항목이다.
+- AI는 pageCount 값을 임의로 채우거나 추천하지 않는다. 사용자가 이번 답변에서 숫자를 명시적으로 말하지 않았다면 pageCount는 항상 빈 문자열 ""로 그대로 둔다(12 같은 기본값을 절대 임의로 채우지 않는다).
+- pageCount는 missingFields에 넣지 않는다. 페이지 수는 화면의 별도 선택 UI가 담당하므로, 이 task가 pageCount에 대해 질문하거나 채근하지 않는다.
+- "필수 설정이 모두 채워졌는지" 판단할 때 pageCount는 검사 대상에서 제외한다(위 규칙대로 항상 비어 있을 수 있기 때문).
+
+소설(NOVEL) setting 구조:
+{
+"storySeed": "",
+"genre": "",
+"protagonist": "",
+"background": "",
+"conflict": "",
+"endingDirection": "",
+"mood": "",
+"pointOfView": "",
+"volume": "",
+"symbolItem": "",
+"title": ""
+}
+
+소설 필수 설정: storySeed, genre, protagonist, background, conflict, endingDirection
+소설 선택 설정: mood, pointOfView, volume, symbolItem, title
+
+대화 맥락 활용 규칙:
+
+- extra.userMessage는 사용자의 이번 답변이다. 이번 질문에 대한 답으로 해석한다.
+- extra.previousMessages(또는 chatHistory)가 있으면 지금까지의 대화 흐름을 참고해서, 이미 답변한 내용을 다시 묻지 않는다.
+- draft.setting에 이미 채워진 값이 있으면(이전 turn에서 누적된 값) 그 값을 유지하고 덮어쓰지 않는다. 단, 사용자가 이번 답변에서 명확히 값을 바꾸거나 보완했으면 그 내용을 반영한다.
+
+수집 규칙:
+
+- 사용자가 짧게 답해도 핵심 의도를 파악한다.
+- 사용자가 길게 답하면 필요한 설정값만 추려서 정리한다.
+- 사용자의 고유명사, 장소, 핵심 사건, 분위기는 최대한 유지한다.
+- 애매한 표현은 임의로 확정하지 말고 추가 질문한다.
+- 한 번에 하나의 부족한 필드만 질문한다.
+- 선택 설정은 사용자가 입력하지 않아도 진행할 수 있다.
+- 선택 설정이 비어 있으면 빈 문자열 "" 또는 빈 배열 []로 유지한다.
+
+예시 제공 규칙:
+
+- 사용자가 답하기 어려워할 수 있는 질문이면, result.examples에 이번 질문에 맞는 짧은 예시를 2~3개 문자열 배열로 함께 제공한다.
+- examples는 지금까지의 대화 흐름(storySeed, 이미 채워진 설정 등)과 자연스럽게 이어지는 내용으로 만든다. 매번 같은 범용 예시를 반복하지 않는다.
+- examples는 강제 선택지가 아니라 참고용 힌트다.
+- 예시가 필요 없다고 판단되면 result.examples를 빈 배열 []로 둔다.
+- pageCount 질문에는 examples를 만들지 않는다(위 pageCount 전용 규칙 참조 — 애초에 pageCount를 질문하지 않는다).
+
+본문 생성 전 규칙:
+
+- 필수 설정이 부족한 상태에서는 본문, 페이지 계획, 장면 계획을 생성하지 않는다.
+- 사용자가 바로 생성해달라고 해도 필수 설정이 부족하면 먼저 부족한 설정을 질문한다.
+- 설정이 충분히 모이면 nextAction을 다음 작업 단계로 반환한다.
+
+응답 규칙:
+
+- result.setting은 상태(SUCCESS/NEED_MORE_INPUT)와 무관하게 매번 반환한다. 아직 필수 설정이 다 모이지 않았어도(NEED_MORE_INPUT) 지금까지 파악된 값을 result.setting에 채워서 반환하고, 아직 모르는 필드는 빈 문자열 ""로 둔다.
+- 즉 result는 항상 { "setting": {...위 schema 전체 필드...}, "examples": [...] } 형태를 유지한다. 일부 turn에만 setting을 넣고 다른 turn에는 생략하지 않는다.
+- 필수 설정이 부족하면 message에 사용자에게 보여줄 짧은 질문 하나만 넣는다.
+- missingFields에는 아직 비어 있는 필수 필드명을 넣는다(단, pageCount는 위 규칙대로 항상 제외). 채워진 필드는 missingFields에서 제외한다.
+- nextAction은 상황에 따라 "ASK_USER", "NORMALIZE_SETTING", "CREATE_PAGE_PLAN", "CREATE_SCENE_PLAN" 중 하나를 사용한다. 필수 설정이 부족하면 "ASK_USER", 모두 채워지면 보통 "NORMALIZE_SETTING"을 사용한다.

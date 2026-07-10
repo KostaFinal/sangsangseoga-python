@@ -1,0 +1,226 @@
+동화 페이지별 줄거리 계획 생성 작업을 수행한다.
+
+목표:
+
+- 제공된 동화 setting을 바탕으로 전체 동화의 페이지별 줄거리 계획을 만든다.
+- 각 페이지가 어떤 장면을 담당하는지 명확하게 정리한다.
+- 이 작업에서는 실제 본문을 작성하지 않는다.
+- 이 작업에서는 이미지 프롬프트를 완성하지 않는다.
+- 이 작업에서는 페이지별 장면 계획만 만든다.
+
+적용 대상:
+
+- bookType이 "FAIRY_TALE"인 경우에만 사용한다.
+- 동화는 페이지 단위로 구성한다.
+- 각 페이지는 하나의 중심 장면이나 중심 감정을 가진다.
+
+입력 기준:
+
+- draft.setting에 있는 값을 중심으로 페이지 계획을 만든다.
+- storySeed는 이야기의 출발점으로 사용한다.
+- protagonistName은 주인공 이름으로 사용한다.
+- protagonistDesc는 주인공의 성격과 행동 방식에 반영한다.
+- backgroundPlace는 주요 배경으로 유지한다.
+- problem은 이야기의 중심 문제 또는 목표로 사용한다.
+- importantObject가 제공된 경우 중요한 물건이나 상징으로 활용한다.
+- mood가 제공된 경우 전체 분위기에 반영한다.
+- title이 제공된 경우 제목을 유지한다.
+- title이 비어 있으면 이야기와 어울리는 제목을 생성한다.
+- pageCount는 전체 페이지 수로 사용한다.
+
+필수 설정 확인:
+
+- storySeed, pageCount, protagonistName, protagonistDesc, backgroundPlace, problem이 모두 있어야 한다.
+- 필수 설정이 부족하면 페이지 계획을 생성하지 않는다.
+- 필수 설정이 부족한 경우 status는 "NEED_MORE_INPUT"으로 반환한다.
+- 부족한 필드는 missingFields에 넣는다.
+- nextAction은 "ASK_USER"로 반환한다.
+- extra.regeneratePageNo가 있는 단일 페이지 재생성 모드에서는 이 검사를 다시 하지 않는다(이미 최초 생성 때 통과했다고 간주한다).
+
+페이지 수 기준:
+
+- pageCount가 8이면 8페이지 계획을 만든다.
+- pageCount가 12이면 12페이지 계획을 만든다.
+- pageCount가 16이면 16페이지 계획을 만든다.
+- pageCount가 20이면 20페이지 계획을 만든다.
+- pageCount가 8, 12, 16, 20 중 하나가 아니면 12페이지를 기본값으로 사용하고 warnings에 이유를 남긴다.
+
+기승전결 배분 기준:
+
+- 8페이지:
+    - 1~2p: 기
+    - 3~4p: 승
+    - 5~6p: 전
+    - 7~8p: 결
+- 12페이지:
+    - 1~3p: 기
+    - 4~6p: 승
+    - 7~10p: 전
+    - 11~12p: 결
+- 16페이지:
+    - 1~4p: 기
+    - 5~8p: 승
+    - 9~13p: 전
+    - 14~16p: 결
+- 20페이지:
+    - 1~3p: 기
+    - 4~8p: 승
+    - 9~15p: 전
+    - 16~20p: 결
+
+이야기 구성 규칙:
+
+- 전체 이야기는 기승전결 흐름을 가져야 한다.
+- 초반에는 주인공, 배경, 현재 상황을 보여준다.
+- 중반에는 문제를 해결하기 위한 시도와 작은 어려움을 배치한다.
+- 후반에는 문제의 핵심에 가까워지는 전환 장면을 배치한다.
+- 결말에서는 문제 해결, 감정적 안정, 작은 성장, 회복 중 하나 이상이 느껴지게 한다.
+- 모든 페이지는 전체 이야기의 흐름 안에서 역할이 분명해야 한다.
+- 각 페이지는 앞뒤 페이지와 자연스럽게 이어져야 한다.
+- 한 페이지에는 하나의 중심 장면이나 중심 감정만 담는다.
+- 한 페이지에 너무 많은 사건을 넣지 않는다.
+- 주인공이 이야기의 중심에서 선택하고 행동해야 한다.
+- 문제 해결은 갑작스러운 우연이나 외부의 힘에만 의존하지 않는다.
+- 장르 규칙, 독자 나이 규칙, 안전 규칙을 따른다.
+
+전체 캐릭터/소재 고정 규칙:
+
+- 이야기 전체에서 반복 등장할 조연은 최대 1~2명으로 제한한다.
+- problem을 해결하기 위한 구체적인 하위 목표(예: 특정 물건 여러 개를 모으는 것,
+  특정 인물을 여러 번 만나는 것)를 2페이지 이내에 명확히 설정한다.
+- 3페이지부터 결말까지는 이 하위 목표를 향해 나아가는 과정으로 구성하며,
+  매 페이지마다 새로운 조연이나 새로운 소재를 등장시키지 않는다.
+- 조연을 등장시킬 경우, 이미 등장한 조연을 다시 활용하는 것을 우선한다.
+
+페이지별 장면 규칙:
+
+- 각 페이지에는 pageNo, phase, sceneTitle, sceneSummary, sceneSummaryEn, mainEmotion, imagePromptBase를 포함한다.
+- pageNo는 1부터 pageCount까지 순서대로 작성한다.
+- phase는 "기", "승", "전", "결" 중 하나만 사용한다.
+- sceneTitle은 짧고 구체적으로 작성한다.
+- sceneSummary는 해당 페이지에서 일어나는 일을 1~2문장으로 요약한다.
+- sceneSummary는 공백 포함 최대 80자를 넘지 않는다. 뷰어 화면의 실제 텍스트 박스 크기(가로 400px, 세로 150px, 글자 크기 20px, 줄간격 1.6배 기준 약 4줄 × 20자)에서 계산된 물리적 한도이며, 독자 나이와 무관하게 항상 지켜야 하는 절대 상한이다. 이 글자 수를 넘기면 화면에서 잘려서 안 보인다.
+- sceneSummaryEn은 sceneSummary와 같은 내용을 자연스러운 영어로 옮긴 번역이다. 별도의 글자 수 상한은 두지 않는다.
+- mainEmotion은 해당 페이지의 중심 감정을 작성한다.
+- imagePromptBase는 나중에 삽화 프롬프트로 확장할 수 있는 장면 힌트로 작성한다.
+- imagePromptBase에는 글자, 자막, 말풍선이 들어가야 한다는 표현을 넣지 않는다.
+
+페이지별 질문/선택지 규칙 (공동창작실에서 사용):
+
+- 각 페이지에는 위 필드 외에 question, guide, options도 함께 채운다.
+- question은 이 페이지의 sceneTitle/sceneSummary 방향을 사용자가 직접 고를 수 있게 하는 짧은 질문이다.
+- guide는 question을 보충하는 한 문장이다.
+- options는 3~4개이며, 각 option은 id, icon, title, desc, value를 모두 채운다.
+- icon은 반드시 "1", "2", "3", "4" 중 하나의 숫자 문자열이다. 동물/사물 이모지를 고정으로 쓰지 않는다.
+- option.value는 { "sceneTitle": "", "summary": "", "summaryEn": "", "nextSceneHint": "" } 구조를 가진다.
+  - value.sceneTitle/value.summary는 해당 옵션을 골랐을 때 이 페이지의 sceneTitle/sceneSummary를 대체할 값이다.
+  - value.summary도 위 sceneSummary와 동일하게 공백 포함 최대 80자를 넘지 않는다(같은 텍스트 박스에 표시되기 때문).
+  - value.summaryEn은 value.summary와 같은 내용을 자연스러운 영어로 옮긴 번역이다.
+  - value.nextSceneHint는 이 선택이 다음 페이지에 남기는 짧은 여운/단서다.
+- 같은 페이지의 options끼리는 방향이 뚜렷하게 달라야 한다.
+- 단, 이 "방향 차이"는 감정/방식/태도의 차이여야 하며, 등장인물·배경·소재 자체를
+  바꾸는 것이 아니다. options는 서로 다른 에피소드가 아니라 같은 장면의 다른
+  버전이다. 어떤 option을 선택해도 이야기 전체의 핵심 조연/소재/목표는 동일하게
+  유지되어야 한다.
+- 서로 다른 페이지에서 같은 question/options가 반복되지 않게 한다.
+- 이전 페이지에서 이미 정해진 sceneTitle/sceneSummary/previousAnswers가 있으면 자연스럽게 이어지는 옵션을 만든다.
+
+단일 페이지 재생성 모드 (다시 추천):
+
+- extra.regeneratePageNo 값이 있으면 이 모드로 동작한다.
+- extra.existingPagePlan(페이지 배열)을 그대로 유지하되, pageNo가 extra.regeneratePageNo와 같은 페이지 하나만 sceneTitle, sceneSummary, sceneSummaryEn, mainEmotion, imagePromptBase, question, guide, options를 새로 만든다.
+- 나머지 페이지는 existingPagePlan의 값을 한 글자도 바꾸지 않고 그대로 복사해서 반환한다.
+- extra.recommendationVersion이 0보다 크면, 그 페이지에서 이전에 나왔을 법한 방향과 다른 방향으로 만든다.
+- 이 모드에서도 result.pages는 항상 전체 배열(길이 = pageCount)로 반환한다. 한 페이지만 반환하지 않는다.
+
+제목 생성 규칙:
+
+- draft.setting.title이 있으면 그 제목을 유지한다.
+- title이 비어 있으면 storySeed, protagonistName, importantObject, backgroundPlace를 참고해 동화 제목을 생성한다.
+- 제목은 동화의 핵심 이미지와 어울려야 한다.
+- 제목은 너무 길지 않게 작성한다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- status가 "SUCCESS"인 경우 result에는 반드시 title, pageCount, pages를 넣는다.
+- result.pages의 길이는 반드시 pageCount와 같아야 한다.
+- pageNo는 중복되거나 빠지면 안 된다.
+- 실제 본문 bodyText는 생성하지 않는다.
+- 이미지 생성용 최종 prompt는 생성하지 않는다.
+- JSON key는 camelCase를 사용한다.
+- 사용자에게 보이는 message는 한국어로 작성한다.
+
+result 구조:
+{
+"title": "",
+"pageCount": 12,
+"pages": [
+{
+"pageNo": 1,
+"phase": "기",
+"sceneTitle": "",
+"sceneSummary": "",
+"sceneSummaryEn": "",
+"mainEmotion": "",
+"imagePromptBase": "",
+"question": "",
+"guide": "",
+"options": [
+{
+"id": "",
+"icon": "1",
+"title": "",
+"desc": "",
+"value": {
+"sceneTitle": "",
+"summary": "",
+"summaryEn": "",
+"nextSceneHint": ""
+}
+}
+]
+}
+]
+}
+
+성공 응답 예시:
+{
+"status": "SUCCESS",
+"taskType": "CREATE_PAGE_PLAN",
+"message": "페이지별 줄거리 계획이 완성되었어요.",
+"result": {
+"title": "",
+"pageCount": 12,
+"pages": [
+{
+"pageNo": 1,
+"phase": "기",
+"sceneTitle": "요정 연못에서 들려온 울음소리",
+"sceneSummary": "포롱이가 요정 연못가에서 길을 잃은 아기 새를 만난다.",
+"sceneSummaryEn": "Porong meets a lost baby bird by the fairy pond.",
+"mainEmotion": "놀람과 궁금함",
+"imagePromptBase": "요정 연못가에서 울고 있는 아기 새를 발견한 포롱이",
+"question": "포롱이는 울고 있는 아기 새에게 어떻게 다가갈까요?",
+"guide": "주인공의 성격과 이야기 문제를 반영해 첫 장면을 골라주세요.",
+"options": [
+{
+"id": "AI_PAGE_1_OPTION_1",
+"icon": "1",
+"title": "조심스럽게 말을 건다",
+"desc": "포롱이가 아기 새를 놀라게 하지 않으려고 천천히 다가가요.",
+"value": {
+"sceneTitle": "조심스러운 첫 만남",
+"summary": "포롱이는 울고 있는 아기 새에게 천천히 다가가 말을 건다.",
+"summaryEn": "Porong slowly approaches the crying baby bird and speaks to it.",
+"nextSceneHint": "다음 장면에서는 아기 새가 길을 잃은 이유를 말한다."
+}
+}
+]
+}
+]
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "WRITE_PAGE"
+}

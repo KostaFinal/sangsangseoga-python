@@ -1,0 +1,81 @@
+현재 단계의 질문과 선택지를 생성하는 작업을 수행한다.
+
+목표:
+
+- 현재 한 단계(extra.currentStepKey)에 대한 question, guide, options만 생성한다.
+- 여러 단계를 한 번에 생성하지 않는다.
+- 최종 setting 객체를 정리하거나 확정하지 않는다. 그 작업은 NORMALIZE_SETTING이 담당한다.
+- 본문, 페이지 계획, 장면 계획, 이미지 프롬프트는 생성하지 않는다.
+- 부족한 필드를 자유 질문으로 길게 묻지 않는다. 이 작업은 항상 선택지 카드 구조로 응답한다.
+
+입력 참고 위치:
+
+- extra.currentStepKey: 지금 만들어야 하는 단계 (필수).
+- extra.currentStepLabel: 단계의 화면 표시 이름 (참고용).
+- extra.currentStepIndex: 단계 순번 (참고용).
+- extra.previousAnswers: 이전 단계에서 사용자가 고르거나 입력한 값들의 배열. 이 값과 자연스럽게 이어지는 선택지를 만든다.
+- extra.fallbackQuestion: 화면에 이미 준비된 기본 질문 문구. 그대로 베끼지 말고 톤과 주제를 참고만 한다.
+- extra.recommendationVersion: 정수. 0이면 이 단계의 첫 추천이다. 1 이상이면 재추천 요청이므로 이전에 나왔을 법한 방향과 다른 선택지를 제시한다.
+- extra.interactionMode: "CHOICE" 또는 "MIXED". 추천 방식의 세부 규칙은 이미 주입된 interaction_mode 프롬프트를 따르고, 여기서는 선택지 개수와 톤을 참고하는 용도로만 사용한다.
+
+previousAnswers 반영 규칙:
+
+- 이전 단계 답변의 분위기, 소재, 인물 설정과 어울리는 선택지를 만든다.
+- 이전 답변을 무시하고 매번 같은 범용 선택지를 반복하지 않는다.
+- previousAnswers가 비어 있어도 (예: 첫 단계) 진행을 막지 않고 무난한 기본 선택지를 만든다.
+
+재추천 규칙:
+
+- recommendationVersion이 0보다 크면 이전 추천과 겹치지 않는 새로운 방향의 선택지를 만든다.
+- 재추천이어도 previousAnswers와의 자연스러운 연결은 유지한다.
+
+단계별 value 스키마:
+
+- storySeed 단계의 value는 문자열이다.
+- protagonist 단계의 value는 { "protagonistName": "", "protagonistDesc": "" } 형태의 객체이며, 두 필드를 모두 채운다.
+- backgroundPlace 단계의 value는 문자열이다.
+- problem 단계의 value는 문자열이다.
+- mood 단계의 value는 문자열이다.
+- pageCount 단계는 이 task가 호출되지 않는다. pageCount는 화면에서 고정 선택지로 처리한다.
+
+선택지 작성 규칙:
+
+- 선택지는 3~4개로 제한한다.
+- 각 선택지는 id, icon, title, desc, value를 모두 채운다.
+- icon은 숫자 문자열("1", "2", "3", "4") 또는 짧은 이모지 하나로 채운다.
+- title은 화면에 보이는 짧은 이름, desc는 title을 보완하는 한 문장이다.
+- 선택지끼리 의미가 뚜렷하게 달라야 한다.
+- 선택지는 장르 규칙과 독자 나이 규칙을 따른다.
+
+실패 처리 규칙:
+
+- 필요한 이전 단계 정보가 비어 있어도 차단하지 말고 장르 기본값으로 무난한 선택지를 만든다.
+- currentStepKey 자체를 이해할 수 없을 때만 status를 "FAILED"로 반환한다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- result는 다음 구조를 따른다:
+
+{
+"stepKey": "protagonist",
+"question": "마법 숲에서 친구를 만나는 이야기의 주인공은 누구인가요?",
+"guide": "앞에서 고른 이야기 씨앗과 어울리는 주인공을 골라주세요.",
+"options": [
+{
+"id": "AI_PROTAGONIST_1",
+"icon": "1",
+"title": "호기심 많은 토끼 루루",
+"desc": "작은 단서도 놓치지 않고 숲을 탐험하는 친구예요.",
+"value": {
+"protagonistName": "루루",
+"protagonistDesc": "호기심이 많고 친구를 돕는 토끼"
+}
+}
+]
+}
+
+- status는 보통 "SUCCESS"이다.
+- message는 "선택지를 만들었어요." 와 같은 짧은 한국어 문장으로 채운다.
+- nextAction은 보통 "ASK_USER"이다.
+- JSON key는 camelCase를 사용한다.
