@@ -32,11 +32,30 @@ previousAnswers 반영 규칙:
 단계별 value 스키마:
 
 - storySeed 단계의 value는 문자열이다.
-- protagonist 단계의 value는 { "protagonistName": "", "protagonistDesc": "" } 형태의 객체이며, 두 필드를 모두 채운다.
+- protagonist 단계의 value는, draft.bookType이 "FAIRY_TALE"이면 { "protagonistName": "", "protagonistDesc": "" } 형태의 객체이며 두 필드를 모두 채운다.
+  draft.bookType이 "NOVEL"이면 protagonist 단계의 value는 "이름, 특징 설명" 형식의 한 줄 문자열이다(객체가 아니다).
+  이름을 반드시 포함하고, 쉼표(,) 앞에 이름만 두고 그 뒤에 나이/특징/역할 설명을 붙인다.
+  이름을 비워두거나 생략하지 않는다. 이름 없이 특징 설명만 있는 문장으로 만들지 않는다.
+  예: "카엘, 17세 견습 기록관" / "아리아, 예언을 바꾸려는 소녀".
 - backgroundPlace 단계의 value는 문자열이다.
 - problem 단계의 value는 문자열이다.
 - mood 단계의 value는 문자열이다.
 - pageCount 단계는 이 task가 호출되지 않는다. pageCount는 화면에서 고정 선택지로 처리한다.
+
+소설(NOVEL) 전용 단계 value 스키마:
+
+- genre 단계의 value는 문자열이다(예: "판타지 미스터리").
+- background 단계의 value는 문자열이다(장소/공간적 배경 한 줄 설명).
+- conflict 단계의 value는 문자열이다(주인공이 마주할 핵심 갈등/문제 한 줄 설명).
+- ending 단계의 value는 문자열이다(결말 방향 한 줄 설명).
+- pointOfView 단계의 value는 문자열이다("1인칭", "3인칭 제한 시점", "3인칭 전지적 시점" 중 하나).
+- volume 단계의 value는 문자열이다("짧게", "보통", "길게" 중 하나).
+
+소설(NOVEL) 연출(directing) 단계 value 스키마:
+
+- style 단계의 value는 문자열이다(문장 길이/표현 방식/서술 밀도를 담은 문체 한 줄 설명, 예: "차분하고 문학적인 문체").
+- pace 단계의 value는 문자열이다(사건 전개 속도에 대한 한 줄 설명, 예: "감정선을 천천히 쌓기").
+- avoid 단계의 value는 문자열이다(피하고 싶은 표현/전개/분위기를 담은 한 줄 설명, 예: "잔혹한 장면 제외").
 
 선택지 작성 규칙:
 

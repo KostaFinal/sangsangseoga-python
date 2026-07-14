@@ -48,6 +48,9 @@ TASK_FILE_MAP = {
     "CREATE_SCENE_PLAN": "task/novel/create_scene_plan.txt",
     "WRITE_SCENE": "task/novel/write_scene.txt",
     "REWRITE_SCENE": "task/novel/rewrite_scene.txt",
+    "WRITE_SCENE_SEGMENT": "task/novel/write_scene_segment.txt",
+    "CREATE_SCENARIO_CARDS": "task/novel/create_scenario_cards.txt",
+    "CREATE_COVER_CONCEPTS": "task/novel/create_cover_concepts.txt",
     "CREATE_COVER_PROMPT": "task/novel/create_cover_prompt.txt",
 }
 

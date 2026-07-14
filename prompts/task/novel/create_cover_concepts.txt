@@ -1,0 +1,108 @@
+소설 표지 후보 컨셉 카드 생성 작업을 수행한다.
+
+목표:
+
+- 표지 선택 화면에 보여줄 표지 컨셉 후보 여러 개를 만든다.
+- 이 작업은 실제 이미지나 이미지 생성용 프롬프트를 만들지 않는다. 텍스트 컨셉(이름, 한 줄 설명)만 만든다.
+- 각 컨셉은 화면의 고정된 그라데이션 색상 팔레트 중 하나에 얹혀서 미리보기로 쓰인다.
+- 실제 이미지 생성은 사용자가 후보 중 하나를 고른 뒤 별도 작업(CREATE_COVER_PROMPT)에서 처리한다.
+
+적용 대상:
+
+- bookType이 "NOVEL"인 경우에만 사용한다.
+- 현재 taskType은 "CREATE_COVER_CONCEPTS"이다.
+
+입력 기준:
+
+- draft.setting의 storySeed, genre, protagonist, background, conflict, endingDirection, mood, style을 참고해 컨셉을 만든다.
+- extra.cardCount는 만들어야 하는 컨셉 개수이다. 없으면 4로 본다.
+- extra.excludeTitles는 이전에 이미 보여준 컨셉 이름 목록이다(재추천 시 전달됨). 같거나 아주 비슷한 이름을 다시 만들지 않는다.
+
+컨셉 다양성 규칙:
+
+- 컨셉끼리 분위기, 색감 인상, 강조하는 요소(인물/배경/사물/상징)가 서로 뚜렷하게 달라야 한다.
+- 모든 컨셉이 같은 장면이나 같은 상징을 반복해서 강조하지 않는다.
+- 이야기의 실제 장르, 분위기, 배경, 갈등과 어울려야 한다. 이야기와 무관한 장르(예: 밝은 로맨스인데 극단적인 다크 호러 컨셉)를 섞지 않는다.
+
+컨셉 작성 규칙:
+
+- title은 표지 컨셉을 대표하는 짧은 이름이다(2~6단어, 예: "수호자의 밀실", "황금 열쇠의 빛").
+- title 안에 소설 제목이나 주인공 이름을 그대로 넣지 않는다(이미 다른 곳에 표시된다).
+- description은 이 컨셉이 어떤 장면/분위기/색감을 강조하는 표지인지 한 문장으로 설명한다.
+- 독자 나이 규칙과 안전 규칙을 따른다. 과도한 폭력, 잔혹한 묘사, 선정적 묘사는 만들지 않는다.
+
+실패 처리 규칙:
+
+- draft.setting.storySeed와 genre가 없으면 컨셉을 생성하지 않는다.
+- 필수 입력이 부족한 경우 status는 "NEED_MORE_INPUT"으로 반환한다.
+- 부족한 필드는 missingFields에 넣는다.
+- nextAction은 "ASK_USER"로 반환한다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- status가 "SUCCESS"인 경우 result.concepts에 컨셉 배열을 넣는다.
+- 컨셉 개수는 extra.cardCount(기본 4)와 같아야 한다.
+- 각 컨셉은 title, description을 모두 채운다.
+- JSON key는 camelCase를 사용한다.
+- 사용자에게 보이는 message는 한국어로 짧게 작성한다.
+
+result 구조:
+{
+"concepts": [
+{
+"title": "",
+"description": ""
+}
+]
+}
+
+성공 응답 예시:
+{
+"status": "SUCCESS",
+"taskType": "CREATE_COVER_CONCEPTS",
+"message": "표지 컨셉 4개를 만들었어요.",
+"result": {
+"concepts": [
+{
+"title": "수호자의 밀실",
+"description": "지하 도시 깊은 곳, 수호자의 그림자와 마주선 주인공의 긴장감을 강조한 표지"
+},
+{
+"title": "황금 열쇠의 빛",
+"description": "어둠 속에서 홀로 빛나는 황금 열쇠와 그것을 향해 손을 뻗는 주인공을 강조한 표지"
+}
+]
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "ASK_USER"
+}
+
+요청 형식 예시
+
+{
+"taskType": "CREATE_COVER_CONCEPTS",
+"draft": {
+"bookType": "NOVEL",
+"meta": {
+"interactionMode": "FREE",
+"writerLevel": "TEEN",
+"readerAge": "TEEN"
+},
+"setting": {
+"storySeed": "황금 열쇠를 찾는 소녀의 모험",
+"genre": "모험 판타지",
+"protagonist": "레아, 15세 소녀",
+"background": "잊혀진 지하 도시",
+"conflict": "도시를 지키는 수호자와의 대립",
+"endingDirection": "희망적인 결말",
+"mood": "긴장감",
+"style": "간결한 문체"
+}
+},
+"extra": {
+"cardCount": 4,
+"excludeTitles": []
+}
+}

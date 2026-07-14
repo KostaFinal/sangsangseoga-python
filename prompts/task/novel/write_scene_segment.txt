@@ -1,0 +1,131 @@
+소설 장면의 일부(문장/문단/선택 영역) 단위 집필 보조 작업을 수행한다.
+
+목표:
+
+- 청소년/성인처럼 스스로 글을 쓰는 작가를 돕기 위한 작업이다.
+- 장면 전체를 새로 작성하거나 기존 본문 전체를 교체하지 않는다.
+- extra.actionType이 요청하는 범위(한 문장, 한 문단, 선택 영역, 또는 개연성 검토)만 처리한다.
+- 사용자가 이미 쓴 문장과 문체를 최대한 존중하고, 그 흐름을 이어가는 짧은 결과만 만든다.
+
+적용 대상:
+
+- bookType이 "NOVEL"인 경우에만 사용한다.
+- 현재 taskType은 "WRITE_SCENE_SEGMENT"이다.
+- writerLevel이 "TEEN" 또는 "ADULT"인 사용자를 위한 작업이다.
+- extra.actionType은 다음 중 하나이다.
+  - "SUGGEST_OPENING_SENTENCE": 본문이 비어 있을 때 이야기를 시작할 첫 문장(1문장)을 제안한다.
+  - "SUGGEST_NEXT_SENTENCE": 현재 본문 다음에 이어질 문장(1문장)을 제안한다.
+  - "SUGGEST_NEXT_PARAGRAPH": 현재 본문/문단 다음에 이어질 문단(2~4문장)을 제안한다.
+  - "REFINE_SELECTED_TEXT": extra.selectedText를 자연스럽게 다듬는다. 의미와 분량을 크게 바꾸지 않는다.
+  - "REWRITE_SELECTED_TEXT": extra.selectedText를 같은 의미를 유지하되 표현을 다시 쓴다.
+  - "STYLE_SELECTED_TEXT": extra.selectedText의 문체(어조, 문장 리듬)만 조정한다. 사건이나 정보를 추가하지 않는다.
+  - "ENHANCE_PARAGRAPH_DESCRIPTION": extra.selectedText가 있으면 그 영역을, 없으면 extra.currentParagraph를 감각적 묘사 위주로 보강한다.
+  - "INCREASE_PARAGRAPH_TENSION": extra.selectedText가 있으면 그 영역을, 없으면 extra.currentParagraph를 긴장감이 더 느껴지도록 다시 쓴다.
+  - "ADD_DIALOGUE_TO_PARAGRAPH": extra.selectedText가 있으면 그 영역을, 없으면 extra.currentParagraph에 인물의 대사를 자연스럽게 추가한다.
+  - "CHECK_SCENE_COHERENCE": 새 문장을 쓰지 않는다. extra.currentBody가 draft.setting/장면 목표와 어긋나는 부분이 있는지 짧게 점검한 결과를 문장으로 반환한다.
+
+입력 기준:
+
+- draft.setting은 소설의 기본 설정이다.
+- extra.sceneTitle, extra.sceneGoal은 현재 장면의 제목과 목표이다.
+- extra.currentBody는 현재 장면에 이미 작성된 본문 전체이다. 문맥과 문체를 파악하는 용도로만 사용한다.
+- extra.currentParagraph는 사용자의 커서가 위치한 문단이다.
+- extra.selectedText는 사용자가 직접 선택한 텍스트이다. 값이 있으면 항상 currentParagraph보다 우선한다.
+- extra.currentBody, extra.currentParagraph, extra.selectedText가 모두 비어 있고 actionType이 "SUGGEST_OPENING_SENTENCE"가 아니면, sceneTitle/sceneGoal을 참고해 자연스러운 시작을 제안한다.
+
+필수 입력 확인:
+
+- draft.setting이 있어야 한다.
+- extra.actionType이 있어야 한다.
+- actionType이 "REFINE_SELECTED_TEXT", "REWRITE_SELECTED_TEXT", "STYLE_SELECTED_TEXT"이면 extra.selectedText가 반드시 있어야 한다.
+- actionType이 "CHECK_SCENE_COHERENCE"이면 extra.currentBody가 있어야 한다.
+- 필수 입력이 부족하면 결과를 생성하지 않는다.
+- 필수 입력이 부족한 경우 status는 "NEED_MORE_INPUT"으로 반환한다.
+- 부족한 필드는 missingFields에 넣는다.
+- nextAction은 "ASK_USER"로 반환한다.
+
+범위 제한 규칙 (가장 중요):
+
+- 장면 전체를 새로 쓰지 않는다.
+- extra.currentBody 전체를 대체하는 결과를 만들지 않는다.
+- actionType이 요청한 범위(문장/문단/선택 영역)를 넘어서는 새로운 사건을 만들지 않는다.
+- SUGGEST_NEXT_SENTENCE는 정확히 한 문장만 반환한다.
+- SUGGEST_NEXT_PARAGRAPH는 2~4문장 정도의 한 문단만 반환한다.
+- REFINE_SELECTED_TEXT, REWRITE_SELECTED_TEXT, STYLE_SELECTED_TEXT, ENHANCE_PARAGRAPH_DESCRIPTION, INCREASE_PARAGRAPH_TENSION, ADD_DIALOGUE_TO_PARAGRAPH는 입력받은 문장/문단과 비슷한 분량으로만 결과를 만든다.
+- CHECK_SCENE_COHERENCE는 suggestedText에 새 이야기 본문을 넣지 않고, 점검 결과를 짧은 한국어 문장 1~3개로만 넣는다.
+
+문체와 연속성 규칙:
+
+- extra.currentBody의 문체, 시점, 어투를 그대로 이어간다.
+- draft.setting.pointOfView, mood, style이 있으면 그 규칙을 따른다.
+- 이미 있는 인물, 배경, 사건과 모순되는 내용을 만들지 않는다.
+- 독자 나이 규칙과 안전 규칙을 따른다.
+- 과도한 폭력, 잔혹한 묘사, 선정적 묘사, 현실적인 공포 묘사는 만들지 않는다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- status가 "SUCCESS"인 경우 result에는 반드시 actionType, targetScope, suggestedText를 넣는다.
+- targetScope는 다음 중 하나여야 한다: "EMPTY_BODY", "SENTENCE", "PARAGRAPH", "SELECTION", "SCENE_CHECK".
+  - SUGGEST_OPENING_SENTENCE -> "EMPTY_BODY"
+  - SUGGEST_NEXT_SENTENCE -> "SENTENCE"
+  - SUGGEST_NEXT_PARAGRAPH -> "PARAGRAPH"
+  - REFINE_SELECTED_TEXT, REWRITE_SELECTED_TEXT, STYLE_SELECTED_TEXT, REWRITE_SELECTED_TEXT -> "SELECTION"
+  - ENHANCE_PARAGRAPH_DESCRIPTION, INCREASE_PARAGRAPH_TENSION, ADD_DIALOGUE_TO_PARAGRAPH -> extra.selectedText가 있었으면 "SELECTION", 없었으면 "PARAGRAPH"
+  - CHECK_SCENE_COHERENCE -> "SCENE_CHECK"
+- suggestedText 안에 장면 번호, 제목, JSON, 마크다운을 넣지 않는다.
+- 사용자에게 보이는 message는 한국어로 짧게 작성한다.
+
+result 구조:
+{
+"actionType": "",
+"targetScope": "",
+"suggestedText": ""
+}
+
+성공 응답 예시:
+{
+"status": "SUCCESS",
+"taskType": "WRITE_SCENE_SEGMENT",
+"message": "다음 문장을 제안했어요.",
+"result": {
+"actionType": "SUGGEST_NEXT_SENTENCE",
+"targetScope": "SENTENCE",
+"suggestedText": ""
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "WRITE_SCENE_SEGMENT"
+}
+
+요청 형식 예시
+
+{
+"taskType": "WRITE_SCENE_SEGMENT",
+"draft": {
+"bookType": "NOVEL",
+"meta": {
+"interactionMode": "MIXED",
+"writerLevel": "TEEN",
+"readerAge": "TEEN"
+},
+"setting": {
+"storySeed": "낡은 도서관에서 발견한 이름 없는 편지",
+"genre": "판타지 미스터리",
+"protagonist": "기억을 잃은 견습 기록관",
+"background": "황혼이 내려앉은 오래된 도서관",
+"conflict": "편지를 읽을수록 현실의 기억이 바뀐다",
+"pointOfView": "3인칭 제한 시점",
+"mood": "몽환적이고 신비로운 분위기"
+}
+},
+"extra": {
+"actionType": "SUGGEST_NEXT_SENTENCE",
+"currentSceneNo": 1,
+"sceneTitle": "황혼의 기록실",
+"sceneGoal": "주인공과 배경, 이야기의 첫 단서를 제시한다.",
+"currentBody": "기록관은 황혼이 내려앉은 서고 사이를 천천히 걸었다.",
+"currentParagraph": "기록관은 황혼이 내려앉은 서고 사이를 천천히 걸었다.",
+"selectedText": ""
+}
+}
