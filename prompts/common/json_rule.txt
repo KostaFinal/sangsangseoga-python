@@ -40,6 +40,10 @@ Field rules:
 "WRITE_SCENE",
 "REWRITE_SCENE",
 "CREATE_COVER_PROMPT",
+"WRITE_POEM",
+"REWRITE_POEM",
+"WRITE_ESSAY",
+"REWRITE_ESSAY",
 "TRANSLATE_TEXT",
 "COMPLETE",
 "".
@@ -49,6 +53,9 @@ Keep all JSON keys in camelCase.
 All user-facing text values must be written in Korean.
 Exception: any field whose name ends in "En" (e.g. bodyTextEn, sceneSummaryEn) must contain
 a natural English translation of the same meaning instead of Korean.
+Every Korean text value must follow standard 맞춤법(spelling)과 띄어쓰기(spacing) rules.
+Proofread the Korean text silently before finalizing the response and correct any misspelling,
+wrong spacing, or subject-verb mismatch — never leave typos or awkward grammar in the output.
 
 형식
 

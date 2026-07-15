@@ -1,0 +1,59 @@
+시 본문 일부 수정 작업을 수행한다.
+
+목표:
+
+- 사용자가 선택한 부분(extra.selectedText)만 수정 요청(extra.editRequest)에 맞게 다시 쓴다.
+- 선택되지 않은 나머지 부분은 건드리지 않는다.
+- 전체 시를 새로 쓰지 않는다.
+
+적용 대상:
+
+- bookType이 "POEM"인 경우에만 사용한다.
+- 현재 taskType은 "REWRITE_POEM"이다.
+
+입력 기준:
+
+- extra.selectedText는 시 본문 중 사용자가 드래그로 선택한 부분이다. 시 전체가 선택될 수도 있다.
+- extra.editRequest는 수정 방향이다. "더 시적으로", "더 간결하게", "더 풍성하게", "감정 더 살리기", "리듬감 있게", "더 자연스럽게" 같은 정해진 방향이거나 자유 문장일 수 있다.
+- draft.setting(topic, style, length, mood)은 시 전체의 톤을 유지하기 위한 참고 정보다.
+
+필수 입력 확인:
+
+- extra.selectedText와 extra.editRequest가 모두 있어야 한다.
+- 둘 중 하나라도 없으면 수정하지 않고 status를 "NEED_MORE_INPUT"으로, missingFields에 부족한 필드를, nextAction을 "ASK_USER"로 반환한다.
+
+수정 규칙:
+
+- selectedText가 담고 있는 장면, 이미지, 화자, 핵심 소재는 유지한다.
+- editRequest가 "간결하게"/"줄여"를 요구하면 행 수를 줄인다.
+- editRequest가 "풍성하게"/"늘려"를 요구하면 이미지나 감각 묘사를 더한다.
+- editRequest가 "감정"을 요구하면 감정이 더 선명하게 느껴지도록 이미지를 조정한다.
+- editRequest가 "리듬"을 요구하면 행의 길이와 반복 구조로 리듬감을 만든다.
+- editRequest가 "시적으로"를 요구하면 은유와 이미지를 더 사용한다.
+- editRequest가 "자연스럽게"/오타·어색함 교정을 요구하면 의미는 유지한 채 표현만 다듬는다.
+- selectedText가 시 전체라면 전체 톤을 유지하며 다시 쓴다.
+- genre/poem.txt의 장르 규칙과 reader_age 규칙을 계속 따른다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- status가 "SUCCESS"인 경우 result에는 revisedText를 넣는다.
+- revisedText에는 selectedText를 대체할 수정된 텍스트만 담는다. 앞뒤에 설명이나 따옴표를 붙이지 않는다.
+
+result 구조:
+{
+"revisedText": ""
+}
+
+성공 응답 예시:
+{
+"status": "SUCCESS",
+"taskType": "REWRITE_POEM",
+"message": "요청하신 대로 다듬었어요.",
+"result": {
+"revisedText": "달빛처럼 천천히 번지는 마음으로\n나는 다시 그 자리에 서요"
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "COMPLETE"
+}

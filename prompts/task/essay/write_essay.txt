@@ -1,0 +1,70 @@
+에세이 작성 작업을 수행한다.
+
+목표:
+
+- 제공된 설정을 바탕으로 에세이 본문(또는 이어지는 문단)을 작성한다.
+- 요청된 범위만 작성한다. 이미 작성된 본문을 다시 쓰지 않는다.
+
+적용 대상:
+
+- bookType이 "ESSAY"인 경우에만 사용한다.
+- 현재 taskType은 "WRITE_ESSAY"이다.
+- draft.setting.mode는 "GUIDED"(질문 답변형) 또는 "FREE"(자유형) 중 하나다.
+
+입력 기준:
+
+- draft.setting.theme, tone은 에세이 전체의 소재와 어조를 결정하는 기본 설정이다.
+- mode가 "GUIDED"이면 draft.setting.answers(experience, emotion, meaning, scene, readerFeeling, continueNote)를 기반으로 에세이 전체를 새로 작성한다.
+- mode가 "FREE"이면 draft.setting.workInput(사용자의 자유 입력)을 기반으로 작성한다.
+- draft.setting.existingContent는 현재까지 작성된 에세이 본문이다(자유형에서만 값이 있을 수 있다).
+- extra.isContinuation이 true이면 existingContent 뒤에 자연스럽게 이어지는 문단만 작성한다.
+- extra.isContinuation이 false 또는 없으면 처음부터 완성된 에세이를 작성한다.
+
+필수 입력 확인:
+
+- mode가 "GUIDED"이면 answers 중 continueNote를 제외한 나머지 필드(experience, emotion, meaning, scene, readerFeeling)가 모두 있어야 한다.
+- mode가 "FREE"이고 isContinuation이 false이면 workInput 또는 theme 중 최소 하나는 있어야 한다.
+- 필수 입력이 부족하면 본문을 생성하지 않고 status를 "NEED_MORE_INPUT"으로, missingFields에 부족한 필드를, nextAction을 "ASK_USER"로 반환한다.
+
+작성 규칙:
+
+- genre/essay.txt의 장르 규칙(구성 흐름, 문체, 문단 구성, 표현)을 따른다.
+- reader_age 규칙에 맞는 문장 난이도와 어휘 수준을 사용한다.
+- mode가 "GUIDED"일 때: experience로 도입부를 열고, emotion과 meaning으로 중심 문단을 쌓고, scene을 본문 중간에 구체적으로 배치하고, readerFeeling의 여운으로 마무리한다. continueNote가 있으면 자연스럽게 덧붙인다.
+- mode가 "FREE"이고 isContinuation이 false일 때: workInput이 구체적인 글감이나 문장이면 그것을 출발점으로 에세이로 확장하고, workInput이 짧은 요청이면 theme/tone을 참고해 새로 시작한다.
+- mode가 "FREE"이고 isContinuation이 true일 때: existingContent의 어조와 시점, 지금까지의 흐름을 그대로 이어받아 다음 문단을 작성한다. workInput은 다음 문단의 방향을 지시한다. workInput이 비어 있으면 현재 흐름을 자연스럽게 이어간다. content에는 새로 추가되는 문단만 담고 existingContent를 반복하지 않는다.
+- 사실을 과장하거나 극적으로 왜곡하지 않는다.
+
+제목 규칙:
+
+- draft.setting.title이 이미 사용자가 직접 정한 제목처럼 보이면 그대로 유지할 수 있다.
+- 제목이 비어 있으면 본문 내용을 바탕으로 자연스러운 제목을 새로 제안한다.
+- isContinuation이 true인 경우 title은 기존 제목을 그대로 유지해도 된다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- status가 "SUCCESS"인 경우 result에는 반드시 title, content를 넣는다.
+- content 안에는 에세이 본문만 담는다. 문단과 문단 사이는 빈 줄로 구분한다.
+- content 안에 제목, 설명, 마크다운, 따옴표를 넣지 않는다.
+- isContinuation이 true이면 content에는 새로 추가되는 문단만 담는다.
+
+result 구조:
+{
+"title": "",
+"content": ""
+}
+
+성공 응답 예시:
+{
+"status": "SUCCESS",
+"taskType": "WRITE_ESSAY",
+"message": "에세이가 완성되었어요.",
+"result": {
+"title": "비 오는 날의 우산",
+"content": "그날은 갑자기 비가 쏟아졌다. 우산이 없어 난감해하던 내게 친구가 말없이 우산을 씌워 주었다.\n\n작은 우산 아래서 어깨가 조금 젖었지만, 그보다 더 크게 남은 건 고마움이었다. 별일 아닌 것처럼 건넨 친절이 오래도록 마음에 남았다.\n\n지금도 비가 오면 그날의 우산이 떠오른다. 작은 친절도 누군가에게는 오래 기억되는 온기가 될 수 있다는 걸, 그때 처음 알았다."
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "COMPLETE"
+}

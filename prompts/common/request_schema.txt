@@ -39,6 +39,10 @@ Field rules:
 "WRITE_SCENE",
 "REWRITE_SCENE",
 "CREATE_COVER_PROMPT",
+"WRITE_POEM",
+"REWRITE_POEM",
+"WRITE_ESSAY",
+"REWRITE_ESSAY",
 "COMPLETE",
 "".
 
@@ -91,3 +95,11 @@ For NOVEL tasks, use:
 - WRITE_SCENE for writing a novel scene.
 - REWRITE_SCENE for rewriting a novel scene.
 - CREATE_COVER_PROMPT for creating a novel cover image prompt.
+
+For POEM tasks, use:
+- WRITE_POEM for writing a poem (or the next stanza, when extra.isContinuation is true).
+- REWRITE_POEM for rewriting only the selected portion of a poem.
+
+For ESSAY tasks, use:
+- WRITE_ESSAY for writing an essay (or the next paragraph, when extra.isContinuation is true).
+- REWRITE_ESSAY for rewriting only the selected portion of an essay.

@@ -1,0 +1,73 @@
+시 작성 작업을 수행한다.
+
+목표:
+
+- 제공된 설정을 바탕으로 시 한 편(또는 이어지는 연)을 작성한다.
+- 여러 편의 시를 한 번에 만들지 않는다. 요청된 한 편(또는 그 이어지는 부분)만 작성한다.
+
+적용 대상:
+
+- bookType이 "POEM"인 경우에만 사용한다.
+- 현재 taskType은 "WRITE_POEM"이다.
+- draft.setting.mode는 "ANSWER"(질문 답변형) 또는 "FREE"(자유형) 중 하나다.
+
+입력 기준:
+
+- draft.setting.topic, style, length, mood는 시 전체 톤과 분량을 결정하는 기본 설정이다.
+- mode가 "ANSWER"이면 draft.setting.answers(speaker, subject, firstScene, emotionChange, ending, requiredPhrase)를 기반으로 시 전체를 새로 작성한다.
+- mode가 "FREE"이면 draft.setting.freeRequest(사용자의 자유 입력)를 기반으로 작성한다.
+- draft.setting.existingContent는 현재까지 작성된 시 본문이다(자유형에서만 값이 있을 수 있다).
+- extra.isContinuation이 true이면 existingContent 뒤에 자연스럽게 이어지는 부분만 작성한다.
+- extra.isContinuation이 false 또는 없으면 처음부터 완성된 한 편을 작성한다.
+
+필수 입력 확인:
+
+- mode가 "ANSWER"이면 answers 중 requiredPhrase를 제외한 나머지 필드(speaker, subject, firstScene, emotionChange, ending)가 모두 있어야 한다.
+- mode가 "FREE"이고 isContinuation이 false이면 freeRequest 또는 topic 중 최소 하나는 있어야 한다.
+- 필수 입력이 부족하면 시를 생성하지 않고 status를 "NEED_MORE_INPUT"으로, missingFields에 부족한 필드를, nextAction을 "ASK_USER"로 반환한다.
+
+작성 규칙:
+
+- genre/poem.txt의 장르 규칙(형식, 분량, 분위기, 구성, 표현)을 따른다.
+- reader_age 규칙에 맞는 어휘 난이도와 이미지를 사용한다.
+- mode가 "ANSWER"일 때: firstScene에서 speaker가 subject를 마주하는 장면으로 시작하고, emotionChange의 흐름을 따라가며, ending의 여운으로 마무리한다. requiredPhrase가 있으면 자연스럽게 녹여 넣는다.
+- mode가 "FREE"이고 isContinuation이 false일 때: freeRequest가 구체적인 문장이면 그 내용을 시의 출발점으로 삼고, freeRequest가 짧은 요청(예: "꿈을 주제로 첫 연만 써줘")이면 topic/style/length/mood를 참고해 요청받은 범위만 작성한다.
+- mode가 "FREE"이고 isContinuation이 true일 때: existingContent의 화자, 분위기, 이미지를 그대로 이어받아 다음 연을 작성한다. freeRequest는 다음 연의 방향(예: "밤 장면으로 이어줘")을 지시한다. freeRequest가 비어 있으면 현재 분위기와 흐름을 그대로 이어간다. content에는 새로 추가되는 연만 담고 existingContent를 반복하지 않는다.
+- 안전 규칙을 따른다. 잔혹하거나 위협적인 표현은 만들지 않는다.
+
+제목 규칙:
+
+- draft.setting.title이 이미 있고 사용자가 직접 정한 제목처럼 보이면 그대로 유지할 수 있다.
+- 제목이 비어 있거나 "아직 제목이 없어요"라면 새로 제안한다.
+- titleIdeas에는 서로 다른 느낌의 제목 후보를 3~4개 담는다.
+- isContinuation이 true인 경우 titleIdeas는 비워도 된다([]).
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- status가 "SUCCESS"인 경우 result에는 반드시 title, content, titleIdeas를 넣는다.
+- content 안에는 시 본문만 담는다. 연과 연 사이는 빈 줄로 구분한다.
+- content 안에 제목, 설명, 마크다운, 따옴표를 넣지 않는다.
+- isContinuation이 true이면 content에는 새로 추가되는 부분만 담는다.
+
+result 구조:
+{
+"title": "",
+"content": "",
+"titleIdeas": []
+}
+
+성공 응답 예시:
+{
+"status": "SUCCESS",
+"taskType": "WRITE_POEM",
+"message": "시가 완성되었어요.",
+"result": {
+"title": "달빛이 머무는 자리",
+"content": "창밖에 내려앉은 달빛에서\n나는 오래된 마음을 꺼내요\n\n조용히 번지는 그리움은\n천천히 위로로 물들어가요\n\n그 빛을 따라 걷다 보면\n마음은 어느새 따뜻해져요",
+"titleIdeas": ["달빛이 머무는 자리", "그리움이 남은 창", "조용한 위로", "달빛의 이름"]
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "COMPLETE"
+}

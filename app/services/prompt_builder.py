@@ -21,6 +21,8 @@ READER_AGE_FILE_MAP = {
 BOOK_TYPE_GENRE_FILE_MAP = {
     "FAIRY_TALE": "fairy_tale.txt",
     "NOVEL": "novel.txt",
+    "POEM": "poem.txt",
+    "ESSAY": "essay.txt",
 }
 
 
@@ -52,6 +54,14 @@ TASK_FILE_MAP = {
     "CREATE_SCENARIO_CARDS": "task/novel/create_scenario_cards.txt",
     "CREATE_COVER_CONCEPTS": "task/novel/create_cover_concepts.txt",
     "CREATE_COVER_PROMPT": "task/novel/create_cover_prompt.txt",
+
+    # 시 task
+    "WRITE_POEM": "task/poem/write_poem.txt",
+    "REWRITE_POEM": "task/poem/rewrite_poem.txt",
+
+    # 에세이 task
+    "WRITE_ESSAY": "task/essay/write_essay.txt",
+    "REWRITE_ESSAY": "task/essay/rewrite_essay.txt",
 }
 
 

@@ -1,0 +1,59 @@
+에세이 본문 일부 수정 작업을 수행한다.
+
+목표:
+
+- 사용자가 선택한 부분(extra.selectedText)만 수정 요청(extra.editRequest)에 맞게 다시 쓴다.
+- 선택되지 않은 나머지 부분은 건드리지 않는다.
+- 전체 에세이를 새로 쓰지 않는다.
+
+적용 대상:
+
+- bookType이 "ESSAY"인 경우에만 사용한다.
+- 현재 taskType은 "REWRITE_ESSAY"이다.
+
+입력 기준:
+
+- extra.selectedText는 본문 중 사용자가 드래그로 선택한 부분이다. 에세이 전체가 선택될 수도 있다.
+- extra.editRequest는 수정 방향이다. "더 자연스럽게", "더 진솔하게", "더 간결하게", "더 풍성하게", "생각 더 깊게", "장면 더 생생하게" 같은 정해진 방향이거나 자유 문장일 수 있다.
+- draft.setting(theme, tone)은 에세이 전체의 어조를 유지하기 위한 참고 정보다.
+
+필수 입력 확인:
+
+- extra.selectedText와 extra.editRequest가 모두 있어야 한다.
+- 둘 중 하나라도 없으면 수정하지 않고 status를 "NEED_MORE_INPUT"으로, missingFields에 부족한 필드를, nextAction을 "ASK_USER"로 반환한다.
+
+수정 규칙:
+
+- selectedText가 담고 있는 사실, 장면, 인물 관계는 바꾸지 않는다.
+- editRequest가 "간결하게"/"줄여"를 요구하면 문장을 압축한다.
+- editRequest가 "진솔하게"를 요구하면 감정을 더 솔직하고 꾸미지 않게 드러낸다.
+- editRequest가 "풍성하게"/"늘려"를 요구하면 경험과 생각을 더 구체적으로 확장한다.
+- editRequest가 "생각"/"깊"을 요구하면 성찰의 깊이를 더한다.
+- editRequest가 "장면"/"생생"을 요구하면 감각적 디테일(공기, 표정, 소리)을 추가한다.
+- editRequest가 "자연스럽게"/오타·어색함 교정을 요구하면 의미는 유지한 채 표현만 다듬는다.
+- selectedText가 에세이 전체라면 전체 어조를 유지하며 다시 쓴다.
+- genre/essay.txt의 장르 규칙과 reader_age 규칙을 계속 따른다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- status가 "SUCCESS"인 경우 result에는 revisedText를 넣는다.
+- revisedText에는 selectedText를 대체할 수정된 텍스트만 담는다. 앞뒤에 설명이나 따옴표를 붙이지 않는다.
+
+result 구조:
+{
+"revisedText": ""
+}
+
+성공 응답 예시:
+{
+"status": "SUCCESS",
+"taskType": "REWRITE_ESSAY",
+"message": "요청하신 대로 다듬었어요.",
+"result": {
+"revisedText": "그때의 마음을 꾸미지 않고 바라보면, 나는 사실 조금 흔들리고 있었다."
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "COMPLETE"
+}
