@@ -1,8 +1,9 @@
 # app/services/prompt_builder.py
 
 import json
+import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -78,7 +79,16 @@ def read_prompt_file(relative_path: str) -> str:
     return file_path.read_text(encoding="utf-8").strip()
 
 
-def build_prompt(request_data: Dict[str, Any]) -> str:
+def build_prompt(request_data: Dict[str, Any]) -> Tuple[str, Dict[str, float]]:
+    """
+    반환값: (prompt, timings)
+    timings = {"promptFileLoadMs": 파일 디스크 읽기 누적시간, "promptBuildMs": build_prompt 전체 실행시간}
+
+    [AI-PERF] 계측을 위해 임시로 시그니처를 (str) -> (str, dict)로 바꿨다.
+    """
+    build_start = time.perf_counter()
+    file_load_ms = 0.0
+
     task_type = request_data.get("taskType")
     draft = request_data.get("draft", {})
     book_type = draft.get("bookType")
@@ -131,7 +141,9 @@ def build_prompt(request_data: Dict[str, Any]) -> str:
     prompt_parts = []
 
     for path in prompt_paths:
+        file_start = time.perf_counter()
         content = read_prompt_file(path)
+        file_load_ms += (time.perf_counter() - file_start) * 1000
         prompt_parts.append(f"\n\n### {path}\n{content}")
 
     # 7. 마지막에 실제 요청 JSON 붙이기
@@ -148,4 +160,7 @@ def build_prompt(request_data: Dict[str, Any]) -> str:
 """
     )
 
-    return "\n".join(prompt_parts)
+    prompt = "\n".join(prompt_parts)
+    build_ms = (time.perf_counter() - build_start) * 1000
+
+    return prompt, {"promptFileLoadMs": file_load_ms, "promptBuildMs": build_ms}
