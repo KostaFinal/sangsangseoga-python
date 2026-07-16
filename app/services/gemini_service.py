@@ -68,6 +68,20 @@ def _failed_response(
     }
 
 
+def _extract_usage(usage_metadata: Any) -> Dict[str, Optional[int]]:
+    """
+    google-genai의 usage_metadata를 ai_generation_usage 테이블 컬럼명(camelCase)에 맞춰 변환한다.
+    usage_metadata가 없으면(예: 스트리밍 중 에러로 응답을 못 받은 경우) None으로 채운다.
+    """
+    if usage_metadata is None:
+        return {"inputTokenCount": None, "outputTokenCount": None}
+
+    return {
+        "inputTokenCount": getattr(usage_metadata, "prompt_token_count", None),
+        "outputTokenCount": getattr(usage_metadata, "candidates_token_count", None),
+    }
+
+
 def _validate_envelope(data: Dict[str, Any], expected_task_type: Optional[str]) -> Dict[str, Any]:
     """
     React가 항상 같은 구조로 받을 수 있게 응답 envelope를 보정한다.
@@ -111,6 +125,12 @@ def _validate_envelope(data: Dict[str, Any], expected_task_type: Optional[str]) 
         data["warnings"].append("result가 객체가 아니어서 빈 객체로 보정했습니다.")
         data["result"] = {}
 
+    if data["status"] == "SUCCESS" and not data["result"]:
+        data["warnings"].append(
+            "status가 SUCCESS인데 result가 비어 있어 FAILED로 보정했습니다."
+        )
+        data["status"] = "FAILED"
+
     if not isinstance(data["missingFields"], list):
         data["missingFields"] = []
 
@@ -147,6 +167,7 @@ async def call_gemini(
 
         raw_text = response.text or ""
         cleaned_text = _remove_code_fence(raw_text)
+        usage = _extract_usage(getattr(response, "usage_metadata", None))
 
         parse_start = time.perf_counter()
         try:
@@ -159,6 +180,7 @@ async def call_gemini(
                 message="AI 응답을 JSON으로 해석하지 못했습니다.",
                 warning=cleaned_text[:500],
             )
+            result["usage"] = usage
             response_build_ms = (time.perf_counter() - build_start) * 1000
             return result, {
                 "geminiTotalMs": gemini_total_ms,
@@ -176,6 +198,7 @@ async def call_gemini(
             )
         else:
             result = _validate_envelope(parsed, expected_task_type)
+        result["usage"] = usage
         response_build_ms = (time.perf_counter() - build_start) * 1000
 
         return result, {
@@ -204,6 +227,7 @@ async def stream_gemini(
     accumulated_text = ""
     stream_start = time.perf_counter()
     first_token_ms: Optional[float] = None
+    last_usage_metadata = None
 
     try:
         stream = await client.aio.models.generate_content_stream(
@@ -217,6 +241,11 @@ async def stream_gemini(
         )
 
         async for chunk in stream:
+            # usage_metadata는 청크마다 그 시점까지의 누적치로 오므로 마지막 값이 최종치다.
+            chunk_usage = getattr(chunk, "usage_metadata", None)
+            if chunk_usage is not None:
+                last_usage_metadata = chunk_usage
+
             text = chunk.text or ""
             if not text:
                 continue
@@ -237,6 +266,7 @@ async def stream_gemini(
         return
 
     gemini_total_ms = (time.perf_counter() - stream_start) * 1000
+    usage = _extract_usage(last_usage_metadata)
     cleaned_text = _remove_code_fence(accumulated_text)
 
     timings = {
@@ -255,6 +285,7 @@ async def stream_gemini(
             message="AI 응답을 JSON으로 해석하지 못했습니다.",
             warning=cleaned_text[:500],
         )
+        envelope["usage"] = usage
         timings["responseBuildMs"] = (time.perf_counter() - build_start) * 1000
         yield {"type": "done", "envelope": envelope, "timings": timings}
         return
@@ -269,6 +300,7 @@ async def stream_gemini(
         )
     else:
         envelope = _validate_envelope(parsed, expected_task_type)
+    envelope["usage"] = usage
     timings["responseBuildMs"] = (time.perf_counter() - build_start) * 1000
 
     yield {"type": "done", "envelope": envelope, "timings": timings}

@@ -143,6 +143,7 @@ async def generate_ai_image(request: AiGenerateImageRequest, http_request: Reque
             "message": "이미지 생성 성공",
             "imageUrl": image_url,
             "imageBase64": None,
+            "usage": {"imageCount": 1},
         }
 
     except ImagePromptBuildError as e:
