@@ -32,8 +32,15 @@
 - reader_age 규칙에 맞는 문장 난이도와 어휘 수준을 사용한다.
 - mode가 "GUIDED"일 때: experience로 도입부를 열고, emotion과 meaning으로 중심 문단을 쌓고, scene을 본문 중간에 구체적으로 배치하고, readerFeeling의 여운으로 마무리한다. continueNote가 있으면 자연스럽게 덧붙인다.
 - mode가 "FREE"이고 isContinuation이 false일 때: workInput이 구체적인 글감이나 문장이면 그것을 출발점으로 에세이로 확장하고, workInput이 짧은 요청이면 theme/tone을 참고해 새로 시작한다.
-- mode가 "FREE"이고 isContinuation이 true일 때: existingContent의 어조와 시점, 지금까지의 흐름을 그대로 이어받아 다음 문단을 작성한다. workInput은 다음 문단의 방향을 지시한다. workInput이 비어 있으면 현재 흐름을 자연스럽게 이어간다. content에는 새로 추가되는 문단만 담고 existingContent를 반복하지 않는다.
+- isContinuation이 true일 때(모드 공통): existingContent의 어조와 시점, 지금까지의 흐름을 그대로 이어받아 다음 문단을 작성한다. workInput은 다음 문단의 방향을 지시한다. content에는 새로 추가되는 문단만 담고 existingContent를 반복하지 않는다.
 - 사실을 과장하거나 극적으로 왜곡하지 않는다.
+
+분량 규칙:
+
+- isContinuation이 false(처음 작성)이면 책으로 만들었을 때 최소 10페이지 분량이 되도록 충분히 길게 쓴다. 대략 2,500자 이상, 문단 10개 이상을 목표로 한다.
+- mode가 "GUIDED"이면 experience/emotion/meaning/scene/readerFeeling 각 요소를 한두 문장으로 압축하지 말고, 각 요소마다 여러 문단에 걸쳐 구체적인 장면과 생각을 풀어써서 분량을 채운다.
+- reader_age가 미취학/저학년이라도 문장 난이도(짧고 쉬운 문장)는 genre/essay.txt 규칙을 따르되, 짧은 문장을 더 많이 이어 써서 위 분량 기준 자체는 동일하게 맞춘다.
+- isContinuation이 true이면 이 최소 분량 기준을 적용하지 않고, 요청받은 다음 문단 분량만 자연스럽게 작성한다.
 
 제목 규칙:
 
@@ -54,6 +61,8 @@ result 구조:
 "title": "",
 "content": ""
 }
+
+아래 예시는 출력 형식만 보여주기 위해 content를 짧게 줄인 것이다. isContinuation이 false인 실제 응답에서는 분량 규칙에 따라 이보다 훨씬 길게(최소 10페이지, 문단 10개 이상) 작성한다.
 
 성공 응답 예시:
 {

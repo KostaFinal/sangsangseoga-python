@@ -11,3 +11,4 @@ class AiGenerateImageRequest(BaseModel):
     pageNo: Optional[int] = None
     style: Optional[str] = None
     aspectRatio: str = "3:4"
+    bookType: Optional[str] = None

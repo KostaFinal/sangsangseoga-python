@@ -1,0 +1,114 @@
+시 표지 프롬프트 생성 작업을 수행한다.
+
+목표:
+
+- 제공된 시(또는 시집) 제목과 본문을 바탕으로 표지 이미지 프롬프트를 만든다.
+- 이 작업에서는 실제 이미지를 생성하지 않는다.
+- 이 작업에서는 시를 새로 쓰거나 고치지 않는다.
+- 이 작업에서는 표지 이미지 생성에 사용할 coverPrompt만 생성한다.
+
+적용 대상:
+
+- bookType이 "POEM"인 경우에만 사용한다.
+- 현재 taskType은 "CREATE_POEM_COVER_PROMPT"이다.
+- 답변형(ANSWER)과 자유형(FREE) 모두 결과물은 완성된 시 본문이므로, 이 작업에서는
+  제작 방식(mode)을 구분하지 않고 draft.setting.content만 기준으로 삼는다.
+- 시는 페이지별 삽화가 아니라 표지 이미지 한 장을 중심으로 생성한다.
+
+입력 기준:
+
+- draft.setting.title은 시(또는 시집)의 제목이다. 여러 편이면 쉼표로 나열되어 올 수 있다.
+- draft.setting.content는 완성된 시 본문 전체다(여러 편이면 이어 붙여서 전달된다).
+- draft.setting.topic, mood, style은 시 전체 톤을 보조적으로 참고한다.
+- draft.setting.userRequest는 사용자가 표지에 대해 직접 남긴 짧은 요청문이다(있으면 반영, 없어도 된다).
+
+필수 입력 확인:
+
+- draft.setting.content가 있어야 한다.
+- draft.setting.content가 비어 있으면 표지 프롬프트를 생성하지 않는다.
+- 필수 입력이 부족한 경우 status는 "NEED_MORE_INPUT"으로 반환한다.
+- 부족한 필드는 missingFields에 넣는다.
+- nextAction은 "ASK_USER"로 반환한다.
+
+핵심 규칙 - 시를 그대로 옮기지 않는다:
+
+- 시는 은유와 함축으로 쓰여 있어서, 문장을 그대로 이미지 생성 모델에 넘기면 안 된다.
+- 시 본문에서 실제로 그림으로 그릴 수 있는 "구체적인 시각 요소"만 뽑아낸다.
+  예: 계절/시간대, 날씨, 빛과 색감, 배경(창가, 바다, 골목 등), 사물(달빛, 편지, 나무 등), 인물의 유무와 자세/표정.
+- 은유적인 문장("마음에 불을 켜요" 등)은 글자 그대로 그리지 않고, 그 문장이 암시하는 장면이나 색감·빛으로 해석해서 표현한다.
+- 여러 편의 시가 있으면 각 편을 나열하지 않고, 전체를 관통하는 분위기와 이미지를 하나의 상징적인 장면으로 압축한다.
+- userRequest가 있으면 그 방향을 장면 선택이나 톤에 반영하되, 시 본문에서 뽑아낸 시각 요소와 충돌하지 않게 자연스럽게 녹인다.
+
+표지 구성 규칙:
+
+- coverPrompt는 시 전체의 정서와 분위기가 드러나는 하나의 상징적인 장면으로 구성한다.
+- 인물이 등장해도 되고, 인물 없이 배경/사물/빛만으로 구성해도 된다.
+- mood가 제공된 경우 색감과 빛의 톤에 반영한다.
+- 표지에는 배경, 사물, 빛, 색감, 분위기가 구체적으로 드러나야 한다.
+- 표지에는 텍스트, 제목 글자, 자막, 말풍선, 로고를 넣지 않는다.
+
+이미지 비율 규칙:
+
+- 모든 표지 프롬프트는 세로형 책 표지에 적합해야 한다.
+- 기본 비율은 세로 3:4 책 표지로 가정한다.
+- prompt 안에 "vertical 3:4 poetry book cover illustration" 의미가 반영되도록 작성한다.
+
+언어 규칙:
+
+- coverPrompt는 이미지 생성 모델이 이해하기 쉽게 영어로 작성한다.
+- message, warnings 같은 사용자 표시 문장은 한국어로 작성한다.
+- title은 한국어로 유지할 수 있다.
+- coverPrompt 안에서는 제목 텍스트를 이미지에 넣으라고 지시하지 않는다.
+
+금지 표현 규칙:
+
+- 다음 요소를 coverPrompt에 포함하지 않는다:
+    - readable text
+    - Korean text inside image
+    - English text inside image
+    - captions
+    - speech bubbles
+    - typography
+    - title text
+    - watermark
+    - logo
+    - UI elements
+    - blood
+    - gore
+    - realistic horror
+    - excessive violence
+- "no text, no captions, no speech bubbles, no typography, no watermark, no logo"는
+  프롬프트 맨 끝이 아니라 맨 앞부분(장면 묘사보다 먼저)에 넣는다. 이미지 생성 모델은
+  negative prompt를 지원하지 않아, 금지 조건이 긴 장면 묘사 뒤에 있으면 무시되거나
+  잘려나가기 쉽다.
+
+출력 규칙:
+
+- 공통 응답 envelope는 common/json_rule.txt를 따른다.
+- status가 "SUCCESS"인 경우 result에는 반드시 title, coverPrompt를 넣는다.
+- result.title은 draft.setting.title이 있으면 유지한다.
+- result.coverPrompt는 최종 표지 이미지 생성용 프롬프트다.
+- 실제 이미지를 생성하지 않는다.
+- 시 본문을 새로 생성하지 않는다.
+- JSON key는 camelCase를 사용한다.
+- 사용자에게 보이는 message는 한국어로 작성한다.
+
+result 구조:
+{
+"title": "",
+"coverPrompt": ""
+}
+
+성공 응답 예시:
+{
+"status": "SUCCESS",
+"taskType": "CREATE_POEM_COVER_PROMPT",
+"message": "시 표지 프롬프트가 완성되었어요.",
+"result": {
+"title": "달빛이 머무는 자리",
+"coverPrompt": "no text, no captions, no speech bubbles, no typography, no watermark, no logo, vertical 3:4 poetry book cover illustration, a quiet windowsill at night bathed in soft moonlight, pale blue and silver tones, a single warm candle glow beside an old letter, gentle mist drifting outside the window, serene and nostalgic atmosphere"
+},
+"missingFields": [],
+"warnings": [],
+"nextAction": "COMPLETE"
+}

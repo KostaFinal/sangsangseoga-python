@@ -59,10 +59,13 @@ TASK_FILE_MAP = {
     # 시 task
     "WRITE_POEM": "task/poem/write_poem.txt",
     "REWRITE_POEM": "task/poem/rewrite_poem.txt",
+    "CREATE_POEM_COVER_PROMPT": "task/poem/create_cover_prompt.txt",
+    "TRANSLATE_POEM": "task/poem/translate_poem.txt",
 
     # 에세이 task
     "WRITE_ESSAY": "task/essay/write_essay.txt",
     "REWRITE_ESSAY": "task/essay/rewrite_essay.txt",
+    "TRANSLATE_ESSAY": "task/essay/translate_essay.txt",
 }
 
 

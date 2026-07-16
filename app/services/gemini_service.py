@@ -1,5 +1,6 @@
 # app/services/gemini_service.py
 
+import asyncio
 import json
 import os
 import time
@@ -7,6 +8,7 @@ from typing import Any, AsyncGenerator, Dict, Optional, Tuple
 
 from dotenv import load_dotenv
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 
 
@@ -20,6 +22,13 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 # 켜져 있어, 출력이 짧은 태스크에서도 지연시간이 크게 나오는 원인으로 의심된다.
 # thinking_budget=0으로 비활성화한 뒤 [AI-PERF] 로그로 Before/After를 비교한다.
 _THINKING_CONFIG = types.ThinkingConfig(thinking_budget=0)
+
+# Gemini가 "지금 요청이 몰려서 바쁘다"(503 UNAVAILABLE)거나 "쿼터를 잠깐 넘었다"(429
+# RESOURCE_EXHAUSTED)고 답할 때가 있는데, 둘 다 우리 코드 문제가 아니라 그 순간에만
+# 그런 일시적인 상태라 잠깐 쉬었다가 같은 요청을 다시 보내면 대부분 성공한다.
+RETRYABLE_STATUS_CODES = {429, 503}
+MAX_RETRIES = 2
+RETRY_BACKOFF_SECONDS = 1.5
 
 
 class GeminiServiceError(Exception):
@@ -140,6 +149,34 @@ def _validate_envelope(data: Dict[str, Any], expected_task_type: Optional[str]) 
     return data
 
 
+async def _generate_content_with_retry(prompt: str):
+    """
+    generate_content 호출만 감싸서, 일시적인 과부하(429/503) 응답이면 잠깐 쉬었다가
+    같은 요청을 다시 보낸다. JSON 파싱 등 그 이후 로직은 여기서 다루지 않는다.
+    """
+    last_error: Optional[Exception] = None
+
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            return await client.aio.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.7,
+                    response_mime_type="application/json",
+                    thinking_config=_THINKING_CONFIG,
+                ),
+            )
+        except genai_errors.APIError as e:
+            last_error = e
+            if getattr(e, "code", None) in RETRYABLE_STATUS_CODES and attempt < MAX_RETRIES:
+                await asyncio.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
+                continue
+            raise
+
+    raise last_error
+
+
 async def call_gemini(
     prompt: str, expected_task_type: Optional[str] = None
 ) -> Tuple[Dict[str, Any], Dict[str, float]]:
@@ -148,21 +185,11 @@ async def call_gemini(
 
     반환값: (result, timings)
     timings = {"geminiTotalMs": Gemini 호출 대기시간, "parseMs": JSON 파싱시간, "responseBuildMs": envelope 검증/보정시간}
-
-    [AI-PERF] 계측을 위해 임시로 시그니처를 dict -> (dict, dict)로 바꿨다.
     """
 
     try:
         gemini_start = time.perf_counter()
-        response = await client.aio.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.7,
-                response_mime_type="application/json",
-                thinking_config=_THINKING_CONFIG,
-            ),
-        )
+        response = await _generate_content_with_retry(prompt)
         gemini_total_ms = (time.perf_counter() - gemini_start) * 1000
 
         raw_text = response.text or ""
@@ -228,42 +255,63 @@ async def stream_gemini(
     stream_start = time.perf_counter()
     first_token_ms: Optional[float] = None
     last_usage_metadata = None
+    # 아직 delta를 하나도 못 보낸 상태에서만 재시도한다. 이미 일부를 보낸 뒤에 끊기면
+    # 다시 처음부터 스트리밍하는 게 오히려 이상해서(내용이 겹치거나 두 번 나옴) 그때는
+    # 그냥 에러로 끝낸다.
+    started = False
 
-    try:
-        stream = await client.aio.models.generate_content_stream(
-            model=GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.7,
-                response_mime_type="application/json",
-                thinking_config=_THINKING_CONFIG,
-            ),
-        )
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            stream = await client.aio.models.generate_content_stream(
+                model=GEMINI_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.7,
+                    response_mime_type="application/json",
+                    thinking_config=_THINKING_CONFIG,
+                ),
+            )
 
-        async for chunk in stream:
-            # usage_metadata는 청크마다 그 시점까지의 누적치로 오므로 마지막 값이 최종치다.
-            chunk_usage = getattr(chunk, "usage_metadata", None)
-            if chunk_usage is not None:
-                last_usage_metadata = chunk_usage
+            async for chunk in stream:
+                started = True
+                # usage_metadata는 청크마다 그 시점까지의 누적치로 오므로 마지막 값이 최종치다.
+                chunk_usage = getattr(chunk, "usage_metadata", None)
+                if chunk_usage is not None:
+                    last_usage_metadata = chunk_usage
 
-            text = chunk.text or ""
-            if not text:
+                text = chunk.text or ""
+                if not text:
+                    continue
+                if first_token_ms is None:
+                    first_token_ms = (time.perf_counter() - stream_start) * 1000
+                accumulated_text += text
+                yield {"type": "delta", "text": text}
+
+            break
+
+        except genai_errors.APIError as e:
+            if not started and getattr(e, "code", None) in RETRYABLE_STATUS_CODES and attempt < MAX_RETRIES:
+                await asyncio.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
                 continue
-            if first_token_ms is None:
-                first_token_ms = (time.perf_counter() - stream_start) * 1000
-            accumulated_text += text
-            yield {"type": "delta", "text": text}
-
-    except Exception as e:
-        yield {
-            "type": "error",
-            "message": f"Gemini 스트리밍 호출 중 오류가 발생했습니다: {str(e)}",
-            "timings": {
-                "geminiFirstTokenMs": first_token_ms,
-                "geminiTotalMs": (time.perf_counter() - stream_start) * 1000,
-            },
-        }
-        return
+            yield {
+                "type": "error",
+                "message": f"Gemini 스트리밍 호출 중 오류가 발생했습니다: {str(e)}",
+                "timings": {
+                    "geminiFirstTokenMs": first_token_ms,
+                    "geminiTotalMs": (time.perf_counter() - stream_start) * 1000,
+                },
+            }
+            return
+        except Exception as e:
+            yield {
+                "type": "error",
+                "message": f"Gemini 스트리밍 호출 중 오류가 발생했습니다: {str(e)}",
+                "timings": {
+                    "geminiFirstTokenMs": first_token_ms,
+                    "geminiTotalMs": (time.perf_counter() - stream_start) * 1000,
+                },
+            }
+            return
 
     gemini_total_ms = (time.perf_counter() - stream_start) * 1000
     usage = _extract_usage(last_usage_metadata)

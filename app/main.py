@@ -14,6 +14,7 @@ from app.services.gemini_service import call_gemini, stream_gemini, GeminiServic
 from app.services.image_prompt_builder import build_image_prompt, ImagePromptBuildError
 from app.services.replicate_service import generate_image, ReplicateServiceError
 from app.utils.perf_logger import log_ai_perf
+from app.services.gemini_image_service import generate_image, GeminiImageServiceError
 
 
 app = FastAPI()
@@ -122,34 +123,23 @@ async def generate_ai_image(request: AiGenerateImageRequest, http_request: Reque
         final_prompt = build_image_prompt(request.promptText, request.style)
         prompt_build_ms = (time.perf_counter() - prompt_build_start) * 1000
 
-        replicate_start = time.perf_counter()
-        image_url = await generate_image(
+        image_base64, mime_type = await generate_image(
             prompt=final_prompt,
             aspect_ratio=request.aspectRatio,
         )
-        replicate_call_ms = (time.perf_counter() - replicate_start) * 1000
-
-        total_ms = (time.perf_counter() - perf_start) * 1000
-
-        log_ai_perf(request_id, "GENERATE_IMAGE", {
-            "validationMs": validation_ms,
-            "promptBuildMs": prompt_build_ms,
-            "replicateCallMs": replicate_call_ms,
-            "totalMs": total_ms,
-        })
-
         return {
             "success": True,
             "message": "이미지 생성 성공",
-            "imageUrl": image_url,
-            "imageBase64": None,
+            "imageUrl": None,
+            # data URI 형태로 넣어서 Spring/프론트가 별도 필드 없이 <img src>에 바로 써도 되게 한다.
+            "imageBase64": f"data:{mime_type};base64,{image_base64}",
             "usage": {"imageCount": 1},
         }
 
     except ImagePromptBuildError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    except ReplicateServiceError as e:
+    except GeminiImageServiceError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     except Exception as e:
