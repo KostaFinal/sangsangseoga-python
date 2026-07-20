@@ -56,6 +56,7 @@
 - 현재 페이지의 중심 장면과 중심 감정은 유지한다.
 - 문장과 표현만 사용자의 요청에 맞게 조정한다.
 - 독자 나이 규칙, 동화 장르 규칙, 안전 규칙을 따른다.
+- revisedBodyText는 항상 해요체로 끝낸다(예: "~했어요.", "~있어요.", "~였어요.", "~할까요?"). "~습니다/~했습니다" 같은 격식체나 "~다/~였다" 같은 평서체(서술체)는 쓰지 않는다. 기존 본문이 이미 격식체나 평서체였다면 이번 수정에서 해요체로 바꾼다.
 - revisedBodyText는 공백 포함 최대 80자를 넘지 않는다(뷰어 텍스트 박스 크기 기준 절대 상한, write_page.txt와 동일). "장면 더 자세히"나 "감정 더 넣기"로 내용을 보강하더라도 이 글자 수를 넘기지 않도록, 필요하면 다른 부분을 줄여서라도 80자 이내로 맞춘다.
 - revisedBodyTextEn은 revisedBodyText와 같은 내용을 자연스러운 영어로 옮긴 번역이다. 별도의 글자 수 상한은 두지 않는다.
 
@@ -129,10 +130,10 @@ result 구조:
 "message": "페이지 본문을 요청에 맞게 다듬었어요.",
 "result": {
 "pageNo": 1,
-"sceneTitle": "",
-"revisedBodyText": "",
-"revisedBodyTextEn": "",
-"editSummary": ""
+"sceneTitle": "루루가 문을 여는 순간",
+"revisedBodyText": "루루는 두근거리는 마음으로 반짝이는 문을 살짝 열었어요.",
+"revisedBodyTextEn": "With a fluttering heart, Lulu gently opened the sparkling door.",
+"editSummary": "감정이 더 잘 느껴지도록 두근거리는 마음을 추가했어요."
 },
 "missingFields": [],
 "warnings": [],
