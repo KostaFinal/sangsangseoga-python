@@ -46,6 +46,7 @@ TASK_FILE_MAP = {
     "WRITE_PAGE": "task/fairy_tale/write_page.txt",
     "REWRITE_PAGE": "task/fairy_tale/rewrite_page.txt",
     "CREATE_IMAGE_PROMPT": "task/fairy_tale/create_image_prompt.txt",
+    "NORMALIZE_SPEECH_STYLE": "task/fairy_tale/normalize_speech_style.txt",
 
     # 소설 task
     "CREATE_SCENE_PLAN": "task/novel/create_scene_plan.txt",
