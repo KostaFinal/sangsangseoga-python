@@ -12,7 +12,6 @@ from app.schemas.image_request import AiGenerateImageRequest
 from app.services.prompt_builder import build_prompt, PromptBuildError
 from app.services.gemini_service import call_gemini, stream_gemini, GeminiServiceError
 from app.services.image_prompt_builder import build_image_prompt, ImagePromptBuildError
-from app.services.replicate_service import generate_image, ReplicateServiceError
 from app.utils.perf_logger import log_ai_perf
 from app.services.gemini_image_service import generate_image, GeminiImageServiceError
 
@@ -126,6 +125,8 @@ async def generate_ai_image(request: AiGenerateImageRequest, http_request: Reque
         image_base64, mime_type = await generate_image(
             prompt=final_prompt,
             aspect_ratio=request.aspectRatio,
+            reference_image_base64=request.referenceImageBase64,
+            reference_image_mime_type=request.referenceImageMimeType,
         )
         return {
             "success": True,
