@@ -21,6 +21,9 @@
 - draft.images.style은 사용자가 선택한 이미지 스타일이다.
 - draft.pages가 제공된 경우, 페이지별 본문 내용을 참고할 수 있다.
 - 단, 이미지 프롬프트는 page plan의 sceneSummary와 imagePromptBase를 우선 기준으로 만든다.
+- extra.userSceneEdits가 있으면(사용자가 이미지 설계 화면에서 직접 고친 장면 설명), 이는
+  [{ "isCover": true/false, "pageNo": 숫자 또는 null(표지), "editText": "" }] 형태의 배열이다.
+  isCover가 true인 항목은 표지에, pageNo가 일치하는 항목은 그 페이지에 해당한다.
 
 필수 입력 확인:
 
@@ -66,6 +69,11 @@
 
 표지 프롬프트 생성 규칙:
 
+- extra.userSceneEdits에 isCover:true인 항목이 있으면, 그 editText를 표지 장면 묘사의
+  최우선 근거로 삼는다(사용자가 직접 고친 내용이므로 protagonistName/backgroundPlace/problem/
+  importantObject보다 우선한다). 다만 인물 외형·스타일 일관성을 위해 protagonistDesc 등
+  캐릭터 정보는 계속 참고한다.
+- extra.userSceneEdits에 isCover:true인 항목이 없으면 아래 기본 규칙을 따른다.
 - coverPrompt는 전체 동화의 핵심 이미지가 드러나야 한다.
 - coverPrompt에는 protagonistName, backgroundPlace, problem, importantObject가 자연스럽게 반영되어야 한다.
 - importantObject가 비어 있으면 storySeed나 problem을 중심 이미지로 사용한다.
@@ -78,6 +86,9 @@
 
 - draft.outline.pages의 각 pageNo마다 하나의 imagePrompt를 만든다.
 - pagePrompts의 길이는 draft.outline.pages의 길이와 같아야 한다.
+- extra.userSceneEdits 안에 해당 pageNo와 일치하는 항목이 있으면, 그 editText를 이 페이지
+  장면 묘사의 최우선 근거로 삼는다(사용자가 직접 고친 내용이므로 sceneSummary/imagePromptBase보다 우선한다).
+- 일치하는 userSceneEdits 항목이 없는 페이지는 아래 기본 규칙을 따른다.
 - 각 pagePrompt는 해당 페이지의 sceneTitle, sceneSummary, mainEmotion, imagePromptBase를 기준으로 만든다.
 - 한 페이지에는 하나의 중심 장면만 담는다.
 - 다음 페이지의 사건을 미리 그리지 않는다.
