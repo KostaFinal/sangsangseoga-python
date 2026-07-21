@@ -1,6 +1,7 @@
 # app/main.py
 
 import json
+import os
 import time
 import uuid
 
@@ -19,9 +20,18 @@ from app.services.gemini_image_service import generate_image, GeminiImageService
 app = FastAPI()
 
 
+# 로컬 개발 프론트(5173)가 기본값이고, 운영 프론트 도메인은 CORS_ALLOWED_ORIGINS 환경변수로
+# 콤마 구분 목록을 넘겨서 덮어쓴다(예: "https://app.example.com,https://www.example.com").
+_default_origins = "http://localhost:5173"
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", _default_origins).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,6 +59,12 @@ async def root():
     return {
         "message": "Sangsang Seoga AI server is running"
     }
+
+
+@app.get("/health")
+async def health():
+    """docker-compose healthcheck 등 인프라에서 쓰는 가벼운 상태 확인용 엔드포인트."""
+    return {"status": "ok"}
 
 
 @app.post("/api/ai/generate")

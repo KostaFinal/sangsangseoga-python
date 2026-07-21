@@ -1,0 +1,33 @@
+name: CD
+
+# be 저장소 CD와 대칭 구조. 이 리포(sangsangseoga-python)만 바뀌어도 전체 스택을 재배포한다.
+# 이 리포는 develop 없이 main에 직접 push하는 구조라, 검증 없이 push=즉시배포가 되지 않도록
+# push를 직접 트리거로 쓰지 않고 CI(ci.yml)가 성공한 뒤에만 배포하도록 workflow_run으로 체이닝한다.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Pull latest code on EC2 and redeploy
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" '
+            set -e
+            cd ~/sangsangseoga-python && git pull origin main
+            # docker-compose.prod.yml은 be 저장소에 있으므로 빌드/재기동은 거기서 실행한다.
+            cd ~/be && git pull origin main
+            docker compose -f docker-compose.prod.yml up -d --build
+            docker image prune -f
+          '

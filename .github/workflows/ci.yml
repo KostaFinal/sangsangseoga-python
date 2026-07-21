@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies (fails on broken requirements.txt)
+        run: pip install -r requirements.txt
+
+      - name: Compile check (fails on syntax errors)
+        run: python -m compileall app
+
+      - name: Docker build check (fails if the deploy image can't be built)
+        run: docker build -t sangsangseoga-python:ci-check .
