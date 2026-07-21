@@ -15,9 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure SSH
+        # EC2_SSH_PRIVATE_KEY는 base64로 인코딩된 값이다(줄바꿈이 포함된 원본 PEM을
+        # GitHub Secrets에 그대로 붙여넣으면 복사 과정에서 개행이 깨져 "error in
+        # libcrypto"로 로드 실패하는 경우가 있어, 한 줄짜리 base64로 저장하고 여기서 디코딩한다).
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" | base64 -d > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
 
